@@ -23,7 +23,6 @@ from sqlalchemy import ColumnElement, Connection, exists, func, inspect, select,
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from scrappy.application.errors import InvalidRequestError
-from scrappy.application.jobs.model import JobType
 from scrappy.application.ports.analytics import (
     AttributeFill,
     ColumnInfo,
@@ -48,7 +47,6 @@ from scrappy.infrastructure.persistence.readonly_sql import (
 )
 from scrappy.infrastructure.persistence.repositories import latest_extraction_cte
 from scrappy.infrastructure.persistence.tables import (
-    jobs,
     offer_snapshots,
     offers,
     saved_searches,
@@ -272,18 +270,9 @@ class SqlAnalyticsQueries:
         ).select_from(source)
         if search is not None:
             stmt = stmt.where(search_offers.c.search == search.value)
-        job_stmt = (
-            select(jobs.c.status, func.count())
-            .where(jobs.c.type == JobType.EXTRACT_OFFER.value)
-            .group_by(jobs.c.status)
-        )
-        if search is not None:
-            runs = select(scrape_runs.c.id).where(scrape_runs.c.search == search.value)
-            job_stmt = job_stmt.where(jobs.c.run_id.in_(runs))
         async with self._read() as conn:
             total, extracted = (await conn.execute(stmt)).one()
-            by_status = {s: int(n) for s, n in (await conn.execute(job_stmt)).all()}
-        return ExtractionCoverage(int(total), int(extracted), by_status)
+        return ExtractionCoverage(int(total), int(extracted))
 
     async def attribute_fill(
         self, category: CategoryName, attributes: Sequence[str], search: SearchName | None

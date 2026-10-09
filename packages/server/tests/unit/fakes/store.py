@@ -8,6 +8,8 @@ Reference behaviour for adapter authors:
 * Repositories store and return *copies*, so mutating a returned entity changes nothing
   until ``save`` (catches handlers that forget to save).
 * The job queue enforces dedup keys forever, claims FIFO by ``(available_at, seq)``.
+* The extraction backlog applies the domain rule ``extraction_due`` to every offer with
+  content, ordered by ``last_seen_at`` newest first, then ``(source, external_id)``.
 """
 
 from __future__ import annotations
@@ -19,8 +21,11 @@ from datetime import datetime
 from types import TracebackType
 from typing import Self
 
+from scrappy.application.extraction.batch import ExtractionBatch
+from scrappy.application.extraction.profile_status import ProfileStatus
 from scrappy.application.jobs.model import Job, JobId, JobResult, JobStatus, JobType
-from scrappy.domain.extraction import OfferExtraction
+from scrappy.application.ports.repositories import BacklogQuery
+from scrappy.domain.extraction import ExtractionState, OfferExtraction, extraction_due
 from scrappy.domain.offer import Offer, OfferId, OfferSnapshot
 from scrappy.domain.run import ScrapeRun
 from scrappy.domain.search import SavedSearch, SearchName, SearchOffer
@@ -41,6 +46,12 @@ class StoreState:
     job_seq: dict[JobId, int] = field(default_factory=dict[JobId, int])
     dedup_keys: set[str] = field(default_factory=set[str])
     next_seq: int = 0
+    extraction_states: dict[OfferId, ExtractionState] = field(
+        default_factory=dict[OfferId, ExtractionState]
+    )
+    batches: dict[str, ExtractionBatch] = field(default_factory=dict[str, ExtractionBatch])
+    """Insertion order = creation order (dicts keep it)."""
+    profile_status: dict[str, ProfileStatus] = field(default_factory=dict[str, ProfileStatus])
 
 
 class InMemoryStore:
@@ -174,6 +185,144 @@ class InMemoryScrapeRunRepository:
         runs.sort(key=lambda r: r.started_at, reverse=True)
         return [_copy(r) for r in runs[:limit]]
 
+    async def list_running(self) -> list[ScrapeRun]:
+        runs = [r for r in self._s.runs.values() if r.is_running]
+        runs.sort(key=lambda r: r.started_at)
+        return [_copy(r) for r in runs]
+
+
+def _latest_of(state: StoreState, offer_id: OfferId) -> OfferExtraction | None:
+    best: OfferExtraction | None = None
+    for extraction in state.extractions:
+        if extraction.offer_id == offer_id and (
+            best is None or extraction.provenance.extracted_at >= best.provenance.extracted_at
+        ):
+            best = extraction
+    return best
+
+
+def _routed(state: ExtractionState | None, query: BacklogQuery) -> bool:
+    pinned = state.requested_profile if state is not None and state.forced else None
+    if query.pinned_only:
+        return pinned is not None and pinned == query.profile
+    return query.profile is None or pinned is None or pinned == query.profile
+
+
+class InMemoryExtractionStateRepository:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def get(self, offer_id: OfferId) -> ExtractionState | None:
+        found = self._s.extraction_states.get(offer_id)
+        return _copy(found) if found else None
+
+    async def get_many(self, offer_ids: Collection[OfferId]) -> dict[OfferId, ExtractionState]:
+        return {
+            i: _copy(self._s.extraction_states[i])
+            for i in offer_ids
+            if i in self._s.extraction_states
+        }
+
+    async def save(self, state: ExtractionState) -> None:
+        self._s.extraction_states[state.offer_id] = _copy(state)
+
+    async def backlog(self, query: BacklogQuery, *, limit: int | None = None) -> list[OfferId]:
+        linked = (
+            None if query.search is None else {o for (s, o) in self._s.links if s == query.search}
+        )
+        offers = [
+            o
+            for o in self._s.offers.values()
+            if o.content_hash is not None and (linked is None or o.id in linked)
+        ]
+        offers.sort(
+            key=lambda o: (-o.last_seen_at.timestamp(), o.id.source.value, o.id.external_id)
+        )
+        result: list[OfferId] = []
+        for offer in offers:
+            state = self._s.extraction_states.get(offer.id)
+            if not _routed(state, query):
+                continue
+            latest = _latest_of(self._s, offer.id)
+            if extraction_due(offer, latest, state, query.catalog, query.prompt_version, query.now):
+                result.append(offer.id)
+                if limit is not None and len(result) >= limit:
+                    break
+        return result
+
+    async def count_backlog(self, query: BacklogQuery) -> int:
+        return len(await self.backlog(query))
+
+    async def claim(
+        self, query: BacklogQuery, *, owner: str, lease_until: datetime, limit: int
+    ) -> list[OfferId]:
+        if limit < 1:
+            return []
+        claimed = await self.backlog(query, limit=limit)
+        for offer_id in claimed:
+            state = self._s.extraction_states.get(offer_id) or ExtractionState.new(
+                offer_id, query.now
+            )
+            state.lease(owner, lease_until, query.now)
+            self._s.extraction_states[offer_id] = state
+        return claimed
+
+    async def release_owner(self, owner: str, *, now: datetime) -> int:
+        count = 0
+        for state in self._s.extraction_states.values():
+            if state.lease_owner == owner:
+                state.release(now)
+                count += 1
+        return count
+
+    async def list_parked(self) -> list[ExtractionState]:
+        parked = [s for s in self._s.extraction_states.values() if s.parked]
+        parked.sort(
+            key=lambda s: (
+                -s.updated_at.timestamp(),
+                s.offer_id.source.value,
+                s.offer_id.external_id,
+            )
+        )
+        return [_copy(s) for s in parked]
+
+
+class InMemoryExtractionBatchRepository:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def get(self, batch_id: str) -> ExtractionBatch | None:
+        found = self._s.batches.get(batch_id)
+        return _copy(found) if found else None
+
+    async def save(self, batch: ExtractionBatch) -> None:
+        self._s.batches[batch.id] = _copy(batch)  # an update keeps the creation position
+
+    async def list_open(self, profile: str | None = None) -> list[ExtractionBatch]:
+        return [
+            _copy(b)
+            for b in self._s.batches.values()
+            if b.is_open and (profile is None or b.profile == profile)
+        ]
+
+    async def list_recent(self, *, limit: int) -> list[ExtractionBatch]:
+        return [_copy(b) for b in reversed(self._s.batches.values())][:limit]
+
+
+class InMemoryProfileStatusRepository:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def get(self, profile: str) -> ProfileStatus | None:
+        found = self._s.profile_status.get(profile)
+        return _copy(found) if found else None
+
+    async def save(self, status: ProfileStatus) -> None:
+        self._s.profile_status[status.profile] = _copy(status)
+
+    async def list_all(self) -> list[ProfileStatus]:
+        return [_copy(self._s.profile_status[n]) for n in sorted(self._s.profile_status)]
+
 
 class InMemoryJobQueue:
     def __init__(self, state: StoreState) -> None:
@@ -300,6 +449,18 @@ class InMemoryUnitOfWork:
     @property
     def jobs(self) -> InMemoryJobQueue:
         return InMemoryJobQueue(self._working())
+
+    @property
+    def extraction_states(self) -> InMemoryExtractionStateRepository:
+        return InMemoryExtractionStateRepository(self._working())
+
+    @property
+    def extraction_batches(self) -> InMemoryExtractionBatchRepository:
+        return InMemoryExtractionBatchRepository(self._working())
+
+    @property
+    def profile_status(self) -> InMemoryProfileStatusRepository:
+        return InMemoryProfileStatusRepository(self._working())
 
     async def __aenter__(self) -> Self:
         if self._state is not None:

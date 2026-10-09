@@ -1,0 +1,66 @@
+# LLM extraction profiles (ADR 0010, docs/adr/0010-decoupled-batch-extraction.md).
+#
+# The extractor loop (`scrappy worker`, or `scrappy extract --inline`) reconciles the
+# extraction backlog with the default profile and falls back along `fallback` when a
+# profile is unavailable (server down, model missing, key missing, 402 / out of quota,
+# daily limit used up). `scrappy extract profiles` shows health and capabilities.
+#
+# Secrets never go here: `api_key_env` names an environment variable (or a .env entry).
+# Without this file, one `openrouter` profile is derived from the SCRAPPY_LLM_* settings.
+
+default_profile: openrouter
+fallback: [openrouter]          # e.g. [local, openrouter]: try a local model first
+
+reconciler:
+  interval_seconds: 30          # idle pause between reconcile ticks
+  poll_interval_seconds: 60     # how often open provider batches are polled
+  max_attempts: 5               # failures (per offer and content) before it is parked
+  backoff_base_seconds: 60      # 1 min, 2 min, 4 min, ... capped at backoff_max_minutes
+  backoff_max_minutes: 360
+  quota_cooldown_minutes: 60    # a profile that answered 402 is skipped this long
+  # description_max_chars: 4000 # default: SCRAPPY_LLM_MAX_DESCRIPTION_CHARS
+
+profiles:
+  openrouter:                   # the default: same model and behaviour as before ADR 0010
+    provider: openrouter
+    # model: openai/gpt-4o-mini # default: SCRAPPY_LLM_MODEL
+    api_key_env: OPENROUTER_API_KEY
+    mode: sync                  # sync | batch | auto (batch needs the OpenRouter batch adapter)
+    structured_output: json_schema   # json_schema | json_object | prompt_only
+    concurrency: 4              # parallel calls in sync mode
+    timeout_seconds: 60
+    temperature: 0
+    batch: {min_size: 20, max_size: 200, max_open: 3, max_wait_minutes: 30}
+
+  # Local Ollama (from Docker: base_url http://host.docker.internal:11434/v1).
+  # Ollama's default context is 4096 tokens, which truncates our prompts: raise num_ctx.
+  # local:
+  #   provider: openai_compatible
+  #   base_url: http://localhost:11434/v1
+  #   model: qwen2.5:7b-instruct
+  #   mode: sync
+  #   concurrency: 1              # one GPU: keep it serial
+  #   structured_output: json_schema
+  #   timeout_seconds: 180
+  #   extra_body: {options: {num_ctx: 8192}}
+  #   # Qwen3 / Gemma thinking models: also turn thinking off, e.g.
+  #   # extra_body: {reasoning_effort: none, options: {num_ctx: 8192}}
+
+  # LM Studio's OpenAI-compatible server (load the model in LM Studio first).
+  # lmstudio:
+  #   provider: openai_compatible
+  #   base_url: http://localhost:1234/v1
+  #   model: qwen2.5-7b-instruct
+  #   mode: sync
+  #   concurrency: 1
+  #   structured_output: json_schema   # downgraded by `scrappy extract profiles --probe` if rejected
+  #   timeout_seconds: 180
+
+  # Google AI Studio free tier (needs the gemini adapter; not available yet).
+  # google:
+  #   provider: gemini
+  #   model: gemini-2.5-flash-lite
+  #   api_key_env: GEMINI_API_KEY
+  #   mode: sync
+  #   rate_limit: 15/min          # N/min, N/s or N/h
+  #   daily_limit: 1000           # requests per UTC day; then the next fallback profile

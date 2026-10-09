@@ -29,8 +29,11 @@ from typing import Protocol, Self
 
 from scrappy.application.ports.job_queue import JobQueue
 from scrappy.application.ports.repositories import (
+    ExtractionBatchRepository,
     ExtractionRepository,
+    ExtractionStateRepository,
     OfferRepository,
+    ProfileStatusRepository,
     SavedSearchRepository,
     ScrapeRunRepository,
     SearchOfferRepository,
@@ -50,6 +53,12 @@ class UnitOfWork(Protocol):
     def runs(self) -> ScrapeRunRepository: ...
     @property
     def jobs(self) -> JobQueue: ...
+    @property
+    def extraction_states(self) -> ExtractionStateRepository: ...
+    @property
+    def extraction_batches(self) -> ExtractionBatchRepository: ...
+    @property
+    def profile_status(self) -> ProfileStatusRepository: ...
 
     async def __aenter__(self) -> Self: ...
 

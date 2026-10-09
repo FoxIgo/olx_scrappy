@@ -200,7 +200,8 @@ async def test_refresh_of_unknown_id_with_details_creates_the_offer() -> None:
     await app.refresh_offer(oid("N"), "t1")
     await app.drain()
     assert app.store.state.offers[oid("N")].status is OfferStatus.ACTIVE
-    assert len(app.jobs(JobType.EXTRACT_OFFER)) == 1
+    assert app.jobs(JobType.EXTRACT_OFFER) == []  # extraction is not a job (ADR 0010)
+    assert await app.backlog() == 1
 
 
 async def test_rejected_llm_output_leaves_offer_pending() -> None:
@@ -214,12 +215,17 @@ async def test_rejected_llm_output_leaves_offer_pending() -> None:
     app.extractor.script = invalid
     started = await app.start_run(SEARCH)
     await app.drain()
+    await app.extract()
     state = app.store.state
     assert state.extractions == []
     assert state.links[(SEARCH, A)].is_relevant is None  # still unknown
     run = state.runs[started.run.id]
-    assert run.metrics.extraction.rejected == 1
     assert run.status is RunStatus.COMPLETED  # an LLM failure does not fail the scrape
+    assert run.metrics.extraction.seen == 0  # extraction is not part of a run
+    extraction_state = state.extraction_states[A]
+    assert extraction_state.attempts == 1
+    assert extraction_state.next_attempt_at is not None  # backoff, then back in the backlog
+    assert await app.backlog() == 0
 
 
 async def test_invalid_attributes_from_llm_are_rejected_by_the_domain() -> None:
@@ -231,10 +237,11 @@ async def test_invalid_attributes_from_llm_are_rejected_by_the_domain() -> None:
     app.extractor.script = lambda _: ExtractionResult(LAPTOP, {"ram_gb": "lots"}, "m", "p")
     await app.start_run(SEARCH)
     await app.drain()
+    await app.extract()
     assert app.store.state.extractions == []
-    (job,) = app.jobs(JobType.EXTRACT_OFFER)
-    assert job.result is not None
-    assert "invalid extraction" in job.result.notes[0]
+    last_error = app.store.state.extraction_states[A].last_error
+    assert last_error is not None
+    assert "invalid extraction" in last_error
 
 
 async def test_retryable_llm_failure_is_retried() -> None:
@@ -255,9 +262,12 @@ async def test_retryable_llm_failure_is_retried() -> None:
     app.extractor.script = flaky
     await app.start_run(SEARCH)
     await app.drain()
-    app.clock.advance(timedelta(minutes=5))
-    await app.drain()
+    await app.extract()
+    assert app.store.state.extractions == []
+    app.clock.advance(timedelta(minutes=5))  # past the backoff
+    await app.extract()
     assert len(app.store.state.extractions) == 1
+    assert app.store.state.extraction_states[A].attempts == 0  # reset by the success
 
 
 async def test_handler_crash_is_treated_as_retryable() -> None:

@@ -5,11 +5,11 @@ returns a :class:`Container`. No DI framework; manual wiring (ADR 0002). Every a
 be replaced through keyword arguments, which is how the CLI tests inject a fake listing
 source and a fake extractor while still running the real SQLite persistence.
 
-Missing OpenRouter key: this is **not** a startup error (searches, listing and ``db
-upgrade`` need no LLM). The ``EXTRACT_OFFER`` handler is replaced by
-:class:`MissingExtractorKeyHandler`, which fails such jobs *permanently* with a message
-telling what to do. The run ends PARTIAL; after setting the key, ``scrappy resume RUN_ID``
-re-queues the FAILED jobs (a retryable failure would only burn the backoff schedule).
+Extraction (ADR 0010) is not a job: ``config/extraction.yaml`` (or, without it, the
+``SCRAPPY_LLM_*`` settings) defines extraction profiles, and the extractor loop reconciles
+the backlog. A missing API key is **not** a startup error: that profile reports itself
+unavailable (``scrappy extract profiles``), offers stay in the backlog, and extraction heals
+by itself once the key is set.
 """
 
 from __future__ import annotations
@@ -25,30 +25,46 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from scrappy.application.errors import ApplicationError
 from scrappy.application.jobs.dispatcher import JobDispatcher, JobHandler
-from scrappy.application.jobs.errors import PermanentJobError
 from scrappy.application.jobs.handlers.discover_page import DiscoverPageHandler
 from scrappy.application.jobs.handlers.enrich_offer import EnrichOfferHandler
-from scrappy.application.jobs.handlers.extract_offer import ExtractOfferHandler
-from scrappy.application.jobs.model import Job, JobResult, JobType
-from scrappy.application.policy import PipelinePolicy
+from scrappy.application.jobs.model import JobType
+from scrappy.application.policy import ExtractionPolicy, PipelinePolicy
+from scrappy.application.ports.extraction_backends import (
+    ExtractionProfile,
+    ExtractionProfiles,
+    ProfileHealth,
+    StaticExtractionProfiles,
+)
 from scrappy.application.ports.extractor import AttributeExtractor
 from scrappy.application.ports.listing_source import ListingSource
 from scrappy.application.ports.queries import OfferQueries
 from scrappy.application.ports.system import CategoryProvider, Clock, IdGenerator
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
 from scrappy.application.use_cases.analytics import QueryUseCases, build_query_use_cases
-from scrappy.application.use_cases.extractions import RequeueExtractions
+from scrappy.application.use_cases.extraction import (
+    ExtractionStatus,
+    ForceReextract,
+    PollBatches,
+    ReconcileExtractions,
+)
 from scrappy.application.use_cases.finalize_run import FinalizeRun
 from scrappy.application.use_cases.list_offers import ListOffers
-from scrappy.application.use_cases.runs import RefreshOffer, ResumeRun, StartRun
+from scrappy.application.use_cases.runs import (
+    FinalizeIdleRuns,
+    RefreshOffer,
+    ResumeRun,
+    StartRun,
+)
 from scrappy.application.use_cases.searches import AddSavedSearch, SetRelevanceOverride
 from scrappy.domain.shared import DomainError, SourceId
 from scrappy.infrastructure.config.categories import YamlCategoryProvider
 from scrappy.infrastructure.config.errors import ConfigError
+from scrappy.infrastructure.config.extraction import load_extraction_config
 from scrappy.infrastructure.config.policy import build_pipeline_policy
 from scrappy.infrastructure.config.settings import Settings
 from scrappy.infrastructure.config.sources import SourceConfig, SourcesConfig, load_sources
-from scrappy.infrastructure.extraction.openrouter import OpenRouterAttributeExtractor
+from scrappy.infrastructure.extraction.profiles import build_profiles
+from scrappy.infrastructure.extraction.prompt import PROMPT_VERSION
 from scrappy.infrastructure.persistence import (
     SqlAnalyticsQueries,
     SqlOfferQueries,
@@ -65,12 +81,6 @@ from scrappy.presentation.cli.app import app as cli_app
 from scrappy.presentation.cli.render import configure_streams
 from scrappy.presentation.services import CliContext
 
-MISSING_KEY_MESSAGE = (
-    "OPENROUTER_API_KEY is not set, so offers cannot be extracted. "
-    "Set it in .env (or the environment), then run `scrappy resume RUN_ID` "
-    "(or `scrappy extract requeue`) to extract."
-)
-
 type SourceFactory = Callable[[SourceConfig, PageFetcher], ListingSource]
 
 
@@ -86,11 +96,28 @@ SOURCE_REGISTRY: Mapping[str, SourceFactory] = {"olx_pl": _olx_pl}
 """Source recipes by source id. A new site = one entry here (ADR 0004)."""
 
 
-class MissingExtractorKeyHandler:
-    """Stands in for the ExtractOffer handler when there is no LLM key (see module doc)."""
+class _AlwaysHealthy:
+    async def check(self, *, probe: bool = False) -> ProfileHealth:
+        return ProfileHealth(True, "injected extractor (no health check)")
 
-    async def handle(self, job: Job) -> JobResult:
-        raise PermanentJobError(MISSING_KEY_MESSAGE)
+
+def single_profile(
+    extractor: AttributeExtractor,
+    *,
+    name: str = "custom",
+    model: str = "custom",
+    prompt_version: str = PROMPT_VERSION,
+) -> StaticExtractionProfiles:
+    """Profiles made of one injected sync extractor (tests, embedding)."""
+    profile = ExtractionProfile(
+        name=name,
+        provider="custom",
+        model=model,
+        prompt_version=prompt_version,
+        extractor=extractor,
+        health=_AlwaysHealthy(),
+    )
+    return StaticExtractionProfiles({name: profile}, default_profile=name)
 
 
 @dataclass
@@ -111,11 +138,17 @@ class Container:
     start_run: StartRun
     resume_run: ResumeRun
     refresh_offer: RefreshOffer
-    requeue_extractions: RequeueExtractions
+    finalize_idle_runs: FinalizeIdleRuns
     list_offers: ListOffers
     set_override: SetRelevanceOverride
     q: QueryUseCases
-    has_extractor: bool
+    profiles: ExtractionProfiles
+    reconcile_extractions: ReconcileExtractions
+    poll_batches: PollBatches
+    extraction_status: ExtractionStatus
+    force_reextract: ForceReextract
+    extraction_policy: ExtractionPolicy
+    extraction_config_source: str
     log_level: str
     worker_poll_interval: float
     _fetchers: list[PageFetcher] = field(default_factory=list[PageFetcher], repr=False)
@@ -175,6 +208,7 @@ async def build_app(
     *,
     sources: Mapping[SourceId, ListingSource] | None = None,
     extractor: AttributeExtractor | None = None,
+    profiles: ExtractionProfiles | None = None,
     categories: CategoryProvider | None = None,
     clock: Clock | None = None,
     ids: IdGenerator | None = None,
@@ -183,8 +217,8 @@ async def build_app(
     """Create the engine, migrate the database and wire the application.
 
     Overrides (tests, embedding): ``sources`` replaces the sources.yaml/recipe wiring (no
-    fetchers are built and sources.yaml is optional), ``extractor`` replaces OpenRouter (and
-    makes a missing key irrelevant).
+    fetchers are built and sources.yaml is optional); ``profiles`` replaces the extraction
+    profiles of extraction.yaml; ``extractor`` is a shortcut for one sync profile around it.
     """
     settings.data_dir.mkdir(parents=True, exist_ok=True)
 
@@ -201,7 +235,14 @@ async def build_app(
         )
         listing_sources, fetchers = dict(sources), []
 
-    policy = build_pipeline_policy(settings, sources_config)
+    extraction_config = load_extraction_config(settings)
+    policy = build_pipeline_policy(settings, sources_config, extraction_config.policy)
+    if profiles is None:
+        profiles = (
+            single_profile(extractor)
+            if extractor is not None
+            else build_profiles(extraction_config, settings)
+        )
     engine = create_engine(settings.database_url)
     try:
         if migrate:
@@ -218,44 +259,28 @@ async def build_app(
     ids = ids or UuidIdGenerator()
     category_provider = categories or YamlCategoryProvider(settings.categories_file)
 
-    if extractor is None and settings.openrouter_api_key is not None:
-        extractor = OpenRouterAttributeExtractor(
-            api_key=settings.openrouter_api_key.get_secret_value(),
-            model=settings.llm_model,
-            base_url=settings.llm_base_url,
-            timeout=settings.llm_timeout,
-            structured_output=settings.llm_structured_output,
-            referer=settings.llm_referer,
-            app_title=settings.llm_app_title,
-        )
-
     finalize_run = FinalizeRun(uow=uow, clock=clock, policy=policy)
-    extract_handler: JobHandler = (
-        ExtractOfferHandler(
-            uow=uow, extractor=extractor, categories=category_provider, clock=clock, policy=policy
-        )
-        if extractor is not None
-        else MissingExtractorKeyHandler()
-    )
     handlers: dict[JobType, JobHandler] = {
         JobType.DISCOVER_PAGE: DiscoverPageHandler(
-            uow=uow,
-            sources=listing_sources,
-            categories=category_provider,
-            clock=clock,
-            ids=ids,
-            policy=policy,
+            uow=uow, sources=listing_sources, clock=clock, ids=ids, policy=policy
         ),
-        JobType.ENRICH_OFFER: EnrichOfferHandler(
-            uow=uow,
-            sources=listing_sources,
-            categories=category_provider,
-            clock=clock,
-            ids=ids,
-            policy=policy,
-        ),
-        JobType.EXTRACT_OFFER: extract_handler,
+        JobType.ENRICH_OFFER: EnrichOfferHandler(uow=uow, sources=listing_sources, clock=clock),
     }
+    reconcile = ReconcileExtractions(
+        uow=uow,
+        profiles=profiles,
+        categories=category_provider,
+        clock=clock,
+        ids=ids,
+        policy=policy.extraction,
+    )
+    extraction_status = ExtractionStatus(
+        uow=uow,
+        profiles=profiles,
+        categories=category_provider,
+        clock=clock,
+        selector=reconcile.selector,
+    )
     dispatcher = JobDispatcher(
         handlers=handlers, uow=uow, clock=clock, retry=policy.retry, finalize_run=finalize_run
     )
@@ -276,15 +301,32 @@ async def build_app(
         start_run=StartRun(uow=uow, clock=clock, ids=ids),
         resume_run=ResumeRun(uow=uow, clock=clock, finalize_run=finalize_run),
         refresh_offer=RefreshOffer(uow=uow, clock=clock, ids=ids),
-        requeue_extractions=RequeueExtractions(
-            uow=uow, categories=category_provider, clock=clock, ids=ids
-        ),
+        finalize_idle_runs=FinalizeIdleRuns(uow=uow, finalize_run=finalize_run),
         list_offers=ListOffers(uow=uow, queries=queries, categories=category_provider),
         set_override=SetRelevanceOverride(uow=uow),
         q=build_query_use_cases(
-            uow=uow, queries=SqlAnalyticsQueries(engine), categories=category_provider
+            uow=uow,
+            queries=SqlAnalyticsQueries(engine),
+            categories=category_provider,
+            extraction=extraction_status,
         ),
-        has_extractor=extractor is not None,
+        profiles=profiles,
+        reconcile_extractions=reconcile,
+        poll_batches=PollBatches(
+            uow=uow,
+            profiles=profiles,
+            categories=category_provider,
+            clock=clock,
+            ids=ids,
+            policy=policy.extraction,
+            reconcile=reconcile,
+        ),
+        extraction_status=extraction_status,
+        force_reextract=ForceReextract(uow=uow, profiles=profiles, clock=clock),
+        extraction_policy=policy.extraction,
+        extraction_config_source=(
+            "injected" if extractor is not None else extraction_config.source
+        ),
         log_level=settings.log_level,
         worker_poll_interval=settings.worker_poll_interval,
         _fetchers=fetchers,
@@ -312,6 +354,7 @@ def make_cli_context(
     *,
     sources: Mapping[SourceId, ListingSource] | None = None,
     extractor: AttributeExtractor | None = None,
+    profiles: ExtractionProfiles | None = None,
     categories: CategoryProvider | None = None,
     clock: Clock | None = None,
     ids: IdGenerator | None = None,
@@ -324,6 +367,7 @@ def make_cli_context(
             settings or load_settings(),
             sources=sources,
             extractor=extractor,
+            profiles=profiles,
             categories=categories,
             clock=clock,
             ids=ids,

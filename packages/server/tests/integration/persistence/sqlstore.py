@@ -25,6 +25,10 @@ from scrappy.infrastructure.persistence.job_queue import (
     _job_from,  # pyright: ignore[reportPrivateUsage]
 )
 from scrappy.infrastructure.persistence.tables import (
+    extraction_batch_items,
+    extraction_batches,
+    extraction_profile_status,
+    extraction_state,
     extractions,
     jobs,
     offer_snapshots,
@@ -79,6 +83,31 @@ class SqlStore:
                 state.jobs[job.id] = job
                 state.job_seq[JobId(job.id.value)] = row[jobs.c.seq]
                 state.dedup_keys.add(job.dedup_key)
+            for row in rows(extraction_state):
+                extraction = m.state_from(row, extraction_state.c)
+                state.extraction_states[extraction.offer_id] = extraction
+            items = conn.execute(
+                select(extraction_batch_items).order_by(
+                    extraction_batch_items.c.batch_id, extraction_batch_items.c.position
+                )
+            ).mappings()
+            by_batch: dict[str, list[m.Row]] = {}
+            for item in items:
+                by_batch.setdefault(item[extraction_batch_items.c.batch_id], []).append(item)
+            batch_rows = conn.execute(
+                select(extraction_batches).order_by(extraction_batches.c.seq)
+            ).mappings()
+            for row in batch_rows:
+                batch = m.batch_from(
+                    row,
+                    extraction_batches.c,
+                    by_batch.get(row[extraction_batches.c.id], []),
+                    extraction_batch_items.c,
+                )
+                state.batches[batch.id] = batch
+            for row in rows(extraction_profile_status):
+                status = m.profile_status_from(row, extraction_profile_status.c)
+                state.profile_status[status.profile] = status
         return state
 
     async def close(self) -> None:

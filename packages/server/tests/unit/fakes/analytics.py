@@ -6,7 +6,6 @@ from collections.abc import Sequence
 from datetime import datetime
 
 from scrappy.application.errors import InvalidRequestError
-from scrappy.application.jobs.model import JobType
 from scrappy.application.ports.analytics import (
     AttributeFill,
     ColumnInfo,
@@ -147,14 +146,7 @@ class InMemoryAnalyticsQueries:
             if search is None
             else [oid for (s, oid) in state.links if s == search]
         )
-        runs = {r.id.value for r in state.runs.values() if search is None or r.search == search}
-        jobs: dict[str, int] = {}
-        for job in state.jobs.values():
-            if job.type is JobType.EXTRACT_OFFER and (
-                search is None or (job.run_id is not None and job.run_id.value in runs)
-            ):
-                jobs[job.status.value] = jobs.get(job.status.value, 0) + 1
-        return ExtractionCoverage(len(ids), sum(1 for i in ids if i in latest), jobs)
+        return ExtractionCoverage(len(ids), sum(1 for i in ids if i in latest))
 
     async def attribute_fill(
         self, category: CategoryName, attributes: Sequence[str], search: SearchName | None

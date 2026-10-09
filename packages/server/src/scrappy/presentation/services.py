@@ -12,13 +12,20 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from scrappy.application.jobs.dispatcher import JobDispatcher
+from scrappy.application.policy import ExtractionPolicy
+from scrappy.application.ports.extraction_backends import ExtractionProfiles
 from scrappy.application.ports.system import Clock
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
 from scrappy.application.use_cases.analytics import QueryUseCases
-from scrappy.application.use_cases.extractions import RequeueExtractions
+from scrappy.application.use_cases.extraction import (
+    ExtractionStatus,
+    ForceReextract,
+    PollBatches,
+    ReconcileExtractions,
+)
 from scrappy.application.use_cases.finalize_run import FinalizeRun
 from scrappy.application.use_cases.list_offers import ListOffers
-from scrappy.application.use_cases.runs import ResumeRun, StartRun
+from scrappy.application.use_cases.runs import FinalizeIdleRuns, ResumeRun, StartRun
 from scrappy.application.use_cases.searches import AddSavedSearch, SetRelevanceOverride
 
 
@@ -38,7 +45,7 @@ class Services(Protocol):
     @property
     def resume_run(self) -> ResumeRun: ...
     @property
-    def requeue_extractions(self) -> RequeueExtractions: ...
+    def finalize_idle_runs(self) -> FinalizeIdleRuns: ...
     @property
     def list_offers(self) -> ListOffers: ...
     @property
@@ -49,7 +56,22 @@ class Services(Protocol):
         ...
 
     @property
-    def has_extractor(self) -> bool: ...
+    def profiles(self) -> ExtractionProfiles: ...
+    @property
+    def reconcile_extractions(self) -> ReconcileExtractions: ...
+    @property
+    def poll_batches(self) -> PollBatches: ...
+    @property
+    def extraction_status(self) -> ExtractionStatus: ...
+    @property
+    def force_reextract(self) -> ForceReextract: ...
+    @property
+    def extraction_policy(self) -> ExtractionPolicy: ...
+    @property
+    def extraction_config_source(self) -> str:
+        """Where the profiles come from (extraction.yaml path or the settings fallback)."""
+        ...
+
     @property
     def log_level(self) -> str: ...
     @property

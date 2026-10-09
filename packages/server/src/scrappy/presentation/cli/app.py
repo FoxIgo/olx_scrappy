@@ -10,7 +10,8 @@ from typing import Annotated
 
 import typer
 
-from scrappy.presentation.cli.misc_cmds import db_app, extract_app, worker
+from scrappy.presentation.cli.extract_cmds import extract_app
+from scrappy.presentation.cli.misc_cmds import db_app, worker
 from scrappy.presentation.cli.offers_cmds import offers_app
 from scrappy.presentation.cli.q_cmds import q_app
 from scrappy.presentation.cli.run_cmds import resume, run, runs_app

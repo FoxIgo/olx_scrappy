@@ -86,18 +86,25 @@ def test_invalid_slug_is_a_clean_error(env: CliEnv) -> None:
 # ---------------------------------------------------------------------------------- run
 
 
-def test_run_inline_end_to_end_prints_report(env: CliEnv) -> None:
+def test_run_inline_scrapes_only_and_reports_the_extraction_backlog(env: CliEnv) -> None:
     env.ok("search", "add", "gtx-laptops", SEARCH_URL, "--category", "laptop")
     out = env.ok("run", "gtx-laptops", "--inline")
     assert "Started run" in out
     assert "Run report" in out
     assert "COMPLETED" in out
-    assert "discovery" in out and "extraction" in out
+    assert "discovery" in out
     assert "OK=1" in out.replace("ok=1", "OK=1")  # one search page fetched
-    assert "400 prompt + 80 completion" in out  # 4 extractions x (100, 20)
-    assert "ram_gb" in out  # fill rates
+    assert "backlog for this search: 4" in out
+    assert "LLM tokens" not in out
     assert env.extractor is not None
+    assert env.extractor.calls == []  # a run is scraping only (ADR 0010)
+
+    extracted = env.ok("extract", "--inline")
+    assert "stored 4" in extracted
     assert len(env.extractor.calls) == 4
+    assert "backlog for this search: 0" in env.ok(
+        "runs", "show", next(w for w in out.split() if len(w) == 32)
+    )
 
 
 def test_run_without_worker_only_enqueues(env: CliEnv) -> None:
@@ -216,32 +223,59 @@ def test_relevance_needs_exactly_one_flag_and_a_known_link(ran: CliEnv) -> None:
 # ------------------------------------------------------------------ extraction / misc
 
 
-def test_extract_requeue_and_worker_less_hint(ran: CliEnv) -> None:
-    assert "queued 0" in ran.ok("extract", "requeue")
-    out = ran.ok("extract", "requeue", "--category", "laptop", "--force")
-    assert "queued 3" in out
+def test_extract_status_force_and_requeue_alias(ran: CliEnv) -> None:
+    status = ran.ok("extract")
+    assert "0 offer(s) waiting" in status and "custom (default)" in status
+    assert "Nothing to queue" in ran.ok("extract", "requeue")
+    assert "marked 3" in ran.ok("extract", "requeue", "--category", "laptop", "--force")
+
+    out = ran.ok("extract", "force", "--where", "category=other")
+    assert "Marked 1 offer(s) for re-extraction" in out
     assert "scrappy worker" in out
+    assert "4 offer(s) waiting" in ran.ok("extract", "status")
+    assert ran.extractor is not None
+    calls = len(ran.extractor.calls)
+    assert "stored 4" in ran.ok("extract", "--inline")
+    assert len(ran.extractor.calls) == calls + 4
+    assert "Marked 0" in ran.ok("extract", "force", "--parked")
+
+
+def test_extract_errors_are_clean(ran: CliEnv) -> None:
+    assert "unknown extraction profile nope" in ran.fail("extract", "--inline", "-p", "nope")
+    assert "invalid --where" in ran.fail("extract", "force", "--where", "model")
+    assert "unknown field 'colour'" in ran.fail("extract", "force", "--where", "colour=red")
+    assert "unknown profile nope" in ran.fail("extract", "force", "--profile", "nope")
+
+
+def test_extract_profiles_shows_health_without_network(ran: CliEnv) -> None:
+    out = ran.ok("extract", "profiles")
+    assert "custom (default)" in out and "ok: injected extractor" in out
 
 
 def test_db_upgrade(env: CliEnv) -> None:
     assert "latest schema" in env.ok("db", "upgrade")
 
 
-def test_missing_openrouter_key_fails_extraction_jobs_clearly_and_resume_fixes_it(
+def test_missing_openrouter_key_leaves_a_backlog_that_heals_once_a_profile_works(
     env: CliEnv,
 ) -> None:
+    """No extraction.yaml and no key: the derived ``openrouter`` profile is unavailable."""
     env.ok("search", "add", "gtx-laptops", SEARCH_URL, "--category", "laptop")
     out = env.ok("run", "gtx-laptops", "--inline", with_extractor=False)
-    assert "OPENROUTER_API_KEY is not set" in out
-    assert "PARTIAL" in out
-    assert "4 work item(s) failed" in out.replace("\n", " ")
-    run_id = next(w for w in out.split() if len(w) == 32)
+    assert "COMPLETED" in out  # scraping does not depend on the LLM any more
+    assert "backlog for this search: 4" in out
 
-    # discovery data is kept; nothing is extracted yet
+    stuck = env.ok("extract", "--inline", with_extractor=False)
+    assert "No extraction profile is available" in stuck
+    assert "OPENROUTER_API_KEY is not set" in stuck.replace("\n", " ")
+    profiles = env.ok("extract", "profiles", with_extractor=False)
+    assert "openrouter (default)" in profiles and "UNAVAILABLE" in profiles
+    assert "SCRAPPY_LLM_* settings" in profiles.replace("\n", " ")
+
+    # discovery data is kept; nothing is extracted yet, nothing was penalized
     assert "olx_pl:a1" in env.ok("offers", "list", "gtx-laptops", with_extractor=False)
     assert "No offers match" in env.ok("offers", "list", "gtx-laptops", "--relevant")
+    assert "4 offer(s) waiting" in env.ok("extract", "status", with_extractor=False)
 
-    resumed = env.ok("resume", run_id, "--inline")
-    assert "Re-queued 4" in resumed
-    assert "COMPLETED" in resumed
+    assert "stored 4" in env.ok("extract", "--inline")  # a working profile heals it
     assert "olx_pl:a1" in env.ok("offers", "list", "gtx-laptops", "--relevant")

@@ -224,6 +224,15 @@ class SqlScrapeRunRepository:
         rows = (await self._conn.execute(stmt)).mappings()
         return [m.run_from(row, scrape_runs.c) for row in rows]
 
+    async def list_running(self) -> list[ScrapeRun]:
+        stmt = (
+            select(scrape_runs)
+            .where(scrape_runs.c.status == RunStatus.RUNNING.value)
+            .order_by(scrape_runs.c.started_at, scrape_runs.c.seq)
+        )
+        rows = (await self._conn.execute(stmt)).mappings()
+        return [m.run_from(row, scrape_runs.c) for row in rows]
+
 
 __all__ = [
     "SqlExtractionRepository",

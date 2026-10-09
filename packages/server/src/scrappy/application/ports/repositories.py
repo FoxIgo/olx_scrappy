@@ -18,9 +18,14 @@ Folding it into either aggregate would load every link with every offer/search.
 from __future__ import annotations
 
 from collections.abc import Collection
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 
-from scrappy.domain.extraction import OfferExtraction
+from scrappy.application.extraction.batch import ExtractionBatch
+from scrappy.application.extraction.profile_status import ProfileStatus
+from scrappy.domain.category import CategoryCatalog
+from scrappy.domain.extraction import ExtractionState, OfferExtraction
 from scrappy.domain.offer import Offer, OfferId, OfferSnapshot
 from scrappy.domain.run import ScrapeRun
 from scrappy.domain.search import SavedSearch, SearchName, SearchOffer
@@ -100,4 +105,98 @@ class ScrapeRunRepository(Protocol):
 
     async def list_for_search(self, search: SearchName, *, limit: int) -> list[ScrapeRun]:
         """Newest ``started_at`` first."""
+        ...
+
+    async def list_running(self) -> list[ScrapeRun]:
+        """Every RUNNING run, oldest ``started_at`` first."""
+        ...
+
+
+# ---------------------------------------------------------------------------- extraction
+
+
+@dataclass(frozen=True, slots=True)
+class BacklogQuery:
+    """Which offers are in the extraction backlog (ADR 0010 section 2).
+
+    An offer qualifies when :func:`scrappy.domain.extraction.extraction_due` is true for it
+    (with its latest extraction, its state, ``catalog``, ``prompt_version`` and ``now``),
+    and it passes the scope and routing filters below.
+    """
+
+    catalog: CategoryCatalog
+    prompt_version: str
+    now: datetime
+    search: SearchName | None = None
+    """Only offers linked to this search."""
+    profile: str | None = None
+    """Routing of forced work pinned to a profile (``extract force --profile``). With a
+    profile, offers pinned to another profile are excluded. ``None``: no routing filter."""
+    pinned_only: bool = False
+    """Only offers pinned to ``profile``."""
+
+
+class ExtractionStateRepository(Protocol):
+    """Per-offer extraction state + the backlog query (ADR 0010 section 3).
+
+    Backlog order (``backlog`` and ``claim``): offers' ``last_seen_at`` newest first, then
+    ``(source, external_id)`` ascending as strings. The rule is applied exactly as the
+    domain's ``extraction_due`` (a SQL adapter may pre-filter coarsely, then apply it).
+    """
+
+    async def get(self, offer_id: OfferId) -> ExtractionState | None: ...
+
+    async def get_many(self, offer_ids: Collection[OfferId]) -> dict[OfferId, ExtractionState]: ...
+
+    async def save(self, state: ExtractionState) -> None:
+        """Upsert keyed by ``offer_id``."""
+        ...
+
+    async def backlog(self, query: BacklogQuery, *, limit: int | None = None) -> list[OfferId]: ...
+
+    async def count_backlog(self, query: BacklogQuery) -> int: ...
+
+    async def claim(
+        self, query: BacklogQuery, *, owner: str, lease_until: datetime, limit: int
+    ) -> list[OfferId]:
+        """Lease up to ``limit`` backlog offers to ``owner`` until ``lease_until`` (creating
+        state rows as needed); return them in backlog order. Atomic per offer: an offer whose
+        lease is still valid (another owner committed it) is never handed out twice
+        (SQL: a conditional ``UPDATE ... WHERE lease_until IS NULL OR lease_until <= now`` /
+        ``INSERT ... ON CONFLICT DO NOTHING``, checking the row count)."""
+        ...
+
+    async def release_owner(self, owner: str, *, now: datetime) -> int:
+        """Clear every lease held by ``owner`` (no penalty). Returns the count."""
+        ...
+
+    async def list_parked(self) -> list[ExtractionState]:
+        """States with ``parked`` set, newest ``updated_at`` first (callers check whether the
+        parked target is still the offer's current one)."""
+        ...
+
+
+class ExtractionBatchRepository(Protocol):
+    async def get(self, batch_id: str) -> ExtractionBatch | None: ...
+
+    async def save(self, batch: ExtractionBatch) -> None:
+        """Upsert keyed by ``id``; the item list is replaced by the batch's items."""
+        ...
+
+    async def list_open(self, profile: str | None = None) -> list[ExtractionBatch]:
+        """QUEUED / SUBMITTING / SUBMITTED batches, oldest first (creation order)."""
+        ...
+
+    async def list_recent(self, *, limit: int) -> list[ExtractionBatch]:
+        """Any status, newest first (creation order)."""
+        ...
+
+
+class ProfileStatusRepository(Protocol):
+    async def get(self, profile: str) -> ProfileStatus | None: ...
+
+    async def save(self, status: ProfileStatus) -> None: ...
+
+    async def list_all(self) -> list[ProfileStatus]:
+        """Ordered by profile name."""
         ...

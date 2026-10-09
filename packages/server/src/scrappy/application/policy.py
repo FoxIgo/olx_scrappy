@@ -9,21 +9,39 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
+from scrappy.domain.extraction import ExtractionRetryPolicy
 from scrappy.domain.run import HealthThresholds
 from scrappy.domain.shared import InvalidValueError, SourceId
 
 
 @dataclass(frozen=True, slots=True)
 class ExtractionPolicy:
-    auto: bool = True
-    """``pipeline.extract.auto``: enqueue ExtractOffer as soon as content changes. If False,
-    extraction runs only on demand (``RequeueExtractions``)."""
+    """The reconciling extractor (ADR 0010). Per-profile tuning lives on the profiles."""
+
     description_max_chars: int = 4000
     """Descriptions are truncated to this many characters before going to the LLM."""
+    retry: ExtractionRetryPolicy = field(default_factory=ExtractionRetryPolicy)
+    """Per-offer backoff and parking."""
+    reconcile_interval: timedelta = timedelta(seconds=30)
+    """Extractor loop: pause between reconcile ticks when there was nothing to do."""
+    poll_interval: timedelta = timedelta(seconds=60)
+    """Extractor loop: how often open provider batches are polled."""
+    sync_lease: timedelta = timedelta(minutes=10)
+    """Lease of offers claimed for a sync chunk (a killed extractor loses them this long)."""
+    max_items_per_tick: int = 200
+    """Sync items per reconcile tick (keeps ticks short so polling and shutdown stay timely)."""
+    quota_cooldown: timedelta = timedelta(hours=1)
+    """A profile that answered 402 / quota exhausted is skipped this long."""
+    health_ttl: timedelta = timedelta(minutes=5)
+    """Profile health results are cached this long (failures re-checked after it)."""
+    submitting_timeout: timedelta = timedelta(minutes=10)
+    """A batch stuck in ``submitting`` longer than this is reconciled with the provider."""
 
     def __post_init__(self) -> None:
         if self.description_max_chars < 100:
             raise InvalidValueError("description_max_chars must be >= 100")
+        if self.max_items_per_tick < 1:
+            raise InvalidValueError("max_items_per_tick must be >= 1")
 
 
 @dataclass(frozen=True, slots=True)

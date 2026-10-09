@@ -8,6 +8,11 @@ from typing import Self
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from scrappy.infrastructure.persistence.extraction_repositories import (
+    SqlExtractionBatchRepository,
+    SqlExtractionStateRepository,
+    SqlProfileStatusRepository,
+)
 from scrappy.infrastructure.persistence.job_queue import SqlJobQueue
 from scrappy.infrastructure.persistence.repositories import (
     SqlExtractionRepository,
@@ -62,6 +67,18 @@ class SqlUnitOfWork:
     @property
     def jobs(self) -> SqlJobQueue:
         return SqlJobQueue(self._connection())
+
+    @property
+    def extraction_states(self) -> SqlExtractionStateRepository:
+        return SqlExtractionStateRepository(self._connection())
+
+    @property
+    def extraction_batches(self) -> SqlExtractionBatchRepository:
+        return SqlExtractionBatchRepository(self._connection())
+
+    @property
+    def profile_status(self) -> SqlProfileStatusRepository:
+        return SqlProfileStatusRepository(self._connection())
 
     async def __aenter__(self) -> Self:
         if self._entered:

@@ -1,4 +1,4 @@
-"""Run lifecycle use cases: StartRun, ResumeRun, RefreshOffer."""
+"""Run lifecycle use cases: StartRun, ResumeRun, RefreshOffer, FinalizeIdleRuns."""
 
 from __future__ import annotations
 
@@ -106,3 +106,26 @@ class RefreshOffer:
             )
             await uow.commit()
         return created
+
+
+class FinalizeIdleRuns:
+    """Close RUNNING runs that have no unfinished jobs left.
+
+    Normally ``JobDispatcher`` finalizes a run after its last job. Runs can still be left
+    RUNNING without work: before ADR 0010 a run waited for its ExtractOffer jobs, and the
+    migration that marked those obsolete cannot run application logic. The scraper loop
+    calls this once at start (idempotent, cheap)."""
+
+    def __init__(self, *, uow: UnitOfWorkFactory, finalize_run: FinalizeRun) -> None:
+        self._uow = uow
+        self._finalize_run = finalize_run
+
+    async def __call__(self) -> list[ScrapeRun]:
+        async with self._uow() as uow:
+            running = await uow.runs.list_running()
+        finished: list[ScrapeRun] = []
+        for run in running:
+            result = await self._finalize_run(run.id)
+            if not result.is_running:
+                finished.append(result)
+        return finished

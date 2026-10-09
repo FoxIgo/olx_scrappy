@@ -39,6 +39,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    false,
 )
 from sqlalchemy.engine import Dialect
 from sqlalchemy.types import TypeDecorator
@@ -174,6 +175,12 @@ extractions = Table(
     Column("completion_tokens", Integer, nullable=False),
     Column("cost_usd", String(64)),
     Column("notes", Text),
+    # provenance added by ADR 0010 (NULL for older rows)
+    Column("catalog_fingerprint", String(32)),
+    Column("profile", String(64)),
+    Column("provider", String(64)),
+    Column("batch_id", String(64)),
+    Column("cost_estimated", Boolean, nullable=False, server_default=false()),
     _fk(["source", "external_id"], "offers", ["source", "external_id"]),
     # "latest extraction of an offer": order by extracted_at, then insertion
     Index("ix_extractions_latest", "source", "external_id", "extracted_at", "seq"),
@@ -216,4 +223,80 @@ jobs = Table(
     # claim: PENDING + due + FIFO (available_at, then insertion order)
     Index("ix_jobs_claim", "status", "available_at", "seq"),
     Index("ix_jobs_run", "run_id", "status"),
+)
+
+# ---------------------------------------------------------------- extraction (ADR 0010)
+
+extraction_state = Table(
+    "extraction_state",
+    metadata,
+    Column("source", String(64), primary_key=True),
+    Column("external_id", String(255), primary_key=True),
+    Column("lease_owner", String(80)),
+    Column("lease_until", UtcDateTime),
+    Column("attempts", Integer, nullable=False),
+    Column("last_error", Text),
+    Column("next_attempt_at", UtcDateTime),
+    Column("parked", Boolean, nullable=False),
+    # the target the failure counters refer to
+    Column("target_content_hash", String(64)),
+    Column("target_catalog_fingerprint", String(32)),
+    Column("target_prompt_version", String(64)),
+    Column("forced", Boolean, nullable=False),
+    Column("requested_profile", String(64)),
+    Column("updated_at", UtcDateTime, nullable=False),
+    _fk(["source", "external_id"], "offers", ["source", "external_id"]),
+    Index("ix_extraction_state_lease_owner", "lease_owner"),
+    Index("ix_extraction_state_parked", "parked"),
+)
+
+extraction_batches = Table(
+    "extraction_batches",
+    metadata,
+    _seq(),
+    Column("id", String(64), nullable=False, unique=True),
+    Column("profile", String(64), nullable=False),
+    Column("provider", String(64), nullable=False),
+    Column("model", Text, nullable=False),
+    Column("prompt_version", String(64), nullable=False),
+    Column("catalog_fingerprint", String(32), nullable=False),
+    Column("status", String(16), nullable=False),
+    Column("parent_id", String(64)),
+    Column("provider_batch_id", Text),
+    Column("created_at", UtcDateTime, nullable=False),
+    Column("submitting_at", UtcDateTime),
+    Column("submitted_at", UtcDateTime),
+    Column("finished_at", UtcDateTime),
+    Column("item_count", Integer, nullable=False),
+    Column("prompt_tokens", Integer, nullable=False),
+    Column("completion_tokens", Integer, nullable=False),
+    Column("cost_usd", String(64)),
+    Column("succeeded", Integer, nullable=False),
+    Column("failed", Integer, nullable=False),
+    Column("stale", Integer, nullable=False),
+    Column("error", Text),
+    Index("ix_extraction_batches_status", "status", "profile"),
+)
+
+extraction_batch_items = Table(
+    "extraction_batch_items",
+    metadata,
+    Column("batch_id", String(64), primary_key=True),
+    Column("position", Integer, primary_key=True),
+    Column("source", String(64), nullable=False),
+    Column("external_id", String(255), nullable=False),
+    Column("content_hash", String(64), nullable=False),
+    _fk(["batch_id"], "extraction_batches", ["id"]),
+    Index("ix_extraction_batch_items_offer", "source", "external_id"),
+)
+
+extraction_profile_status = Table(
+    "extraction_profile_status",
+    metadata,
+    Column("profile", String(64), primary_key=True),
+    Column("blocked_until", UtcDateTime),
+    Column("reason", Text),
+    Column("usage_day", String(10)),
+    Column("requests_today", Integer, nullable=False),
+    Column("updated_at", UtcDateTime, nullable=False),
 )

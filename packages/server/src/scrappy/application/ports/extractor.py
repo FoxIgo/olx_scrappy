@@ -10,8 +10,20 @@ Contract for adapter authors
 * ``category`` must be one of ``input.categories`` or ``other``. ``attributes`` must
   contain only keys of that category's schema (``{}`` for ``other``).
 * Invalid output: retry once inside the adapter, then return
-  ``ExtractionRejection(retryable=False)``. Provider/network problems (timeouts, 429, 5xx):
-  return ``ExtractionRejection(retryable=True)``. Do not raise for either.
+  ``ExtractionRejection(kind=INVALID_OUTPUT)``. Never raise for expected failures; map them
+  to a :class:`RejectionKind` (ADR 0010):
+
+  ==================  =====================================  ==============================
+  kind                typical cause                          what the reconciler does
+  ==================  =====================================  ==============================
+  INVALID_OUTPUT      unparsable / schema-violating answer   failure: backoff, park after N
+  TRANSIENT           timeout, 408/409/425/429, 5xx          failure: backoff, park after N
+  PERMANENT           other 4xx (context too long, refusal)  failure: backoff, park after N
+  QUOTA               402, daily quota / credits exhausted   no penalty; profile blocked for
+                                                             a cooldown, fallback profile
+  UNAVAILABLE         connection refused, 401/403, model     no penalty; profile marked
+                      not found (404)                        unhealthy, fallback profile
+  ==================  =====================================  ==============================
 * Always report token usage, also for rejections, so cost is complete (R14).
 * The application validates the result again in the domain
   (``OfferExtraction.validated``); a mismatch there also counts as a rejection.
@@ -21,6 +33,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Protocol
 
 from scrappy.domain.category import Category, CategoryName
@@ -54,6 +67,19 @@ class ExtractionResult:
     notes: str | None = None
 
 
+class RejectionKind(StrEnum):
+    INVALID_OUTPUT = "invalid_output"
+    TRANSIENT = "transient"
+    PERMANENT = "permanent"
+    QUOTA = "quota"
+    UNAVAILABLE = "unavailable"
+
+    @property
+    def penalizes_offer(self) -> bool:
+        """Counts as a failed attempt of the offer (backoff, parking)."""
+        return self not in (RejectionKind.QUOTA, RejectionKind.UNAVAILABLE)
+
+
 @dataclass(frozen=True, slots=True)
 class ExtractionRejection:
     reason: str
@@ -61,6 +87,17 @@ class ExtractionRejection:
     """True for provider/network trouble; False for invalid output after the retry."""
     model: str | None = None
     usage: TokenUsage = field(default_factory=TokenUsage)
+    kind: RejectionKind | None = None
+    """Defaults from ``retryable``: TRANSIENT if retryable, else INVALID_OUTPUT."""
+
+    def __post_init__(self) -> None:
+        if self.kind is None:
+            default = RejectionKind.TRANSIENT if self.retryable else RejectionKind.INVALID_OUTPUT
+            object.__setattr__(self, "kind", default)
+
+    @property
+    def rejection_kind(self) -> RejectionKind:
+        return self.kind or RejectionKind.INVALID_OUTPUT
 
 
 class AttributeExtractor(Protocol):

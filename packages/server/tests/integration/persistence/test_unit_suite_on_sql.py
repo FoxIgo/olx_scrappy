@@ -1,7 +1,8 @@
 """The application's own scenario tests, re-run unchanged against the SQL adapters.
 
-``tests/unit/application`` exercises the use cases, job handlers, dispatcher and queue
-against the in-memory fakes. Here the very same test functions are collected again with the
+``tests/unit/application`` exercises the use cases, job handlers, dispatcher, queue and the
+reconciling extractor (extraction state, batches, profile status) against the in-memory
+fakes. Here the very same test functions are collected again with the
 fakes swapped for ``SqlStore`` (SQLite file, real migrations, real ``SqlUnitOfWork``,
 ``SqlJobQueue`` and ``SqlOfferQueries``): if they pass, the SQL adapters behave like the
 reference implementation for everything the application relies on.
@@ -22,7 +23,13 @@ import pytest
 from scrappy.application.use_cases.list_offers import ListOffers
 from scrappy.infrastructure.persistence.queries import SqlOfferQueries
 from tests.integration.persistence.sqlstore import SqlStore
-from tests.unit.application import test_failures, test_jobs, test_scenario, test_use_cases
+from tests.unit.application import (
+    test_extraction,
+    test_failures,
+    test_jobs,
+    test_scenario,
+    test_use_cases,
+)
 from tests.unit.application.harness import App
 from tests.unit.fakes import InMemoryStore
 
@@ -51,7 +58,7 @@ class SqlApp(App):
 
 @pytest.fixture(autouse=True)
 async def _sql_backed_unit_tests(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[None]:
-    for module in (test_scenario, test_failures, test_use_cases):
+    for module in (test_scenario, test_failures, test_use_cases, test_extraction):
         monkeypatch.setattr(module, "App", SqlApp)
     for module in (test_jobs, test_use_cases):
         monkeypatch.setattr(module, "InMemoryStore", _new_store)
@@ -74,4 +81,5 @@ def _export(module: ModuleType, *, only: tuple[str, ...] = ()) -> None:
 _export(test_scenario)
 _export(test_failures)
 _export(test_use_cases)
+_export(test_extraction)
 _export(test_jobs, only=("TestInMemoryJobQueue",))

@@ -13,9 +13,17 @@ from typing import Any, cast
 
 from sqlalchemy import ColumnCollection
 
+from scrappy.application.extraction.batch import BatchItem, BatchStatus, ExtractionBatch
+from scrappy.application.extraction.profile_status import ProfileStatus
 from scrappy.application.jobs.codec import decode_metrics, encode_metrics
 from scrappy.domain.category import AttributeValue, CategoryName
-from scrappy.domain.extraction import ExtractionProvenance, OfferExtraction, TokenUsage
+from scrappy.domain.extraction import (
+    ExtractionProvenance,
+    ExtractionState,
+    ExtractionTarget,
+    OfferExtraction,
+    TokenUsage,
+)
 from scrappy.domain.offer import (
     ContentHash,
     FieldChange,
@@ -285,6 +293,11 @@ def extraction_values(extraction: OfferExtraction) -> dict[str, Any]:
         "completion_tokens": extraction.usage.completion_tokens,
         "cost_usd": None if cost is None else str(cost),
         "notes": extraction.notes,
+        "catalog_fingerprint": provenance.catalog_fingerprint,
+        "profile": provenance.profile,
+        "provider": provenance.provider,
+        "batch_id": provenance.batch_id,
+        "cost_estimated": provenance.cost_estimated,
     }
 
 
@@ -300,6 +313,11 @@ def extraction_from(row: Row, c: Cols) -> OfferExtraction:
             schema_version=row[c.schema_version],
             content_hash=ContentHash(row[c.content_hash]),
             extracted_at=row[c.extracted_at],
+            catalog_fingerprint=row[c.catalog_fingerprint],
+            profile=row[c.profile],
+            provider=row[c.provider],
+            batch_id=row[c.batch_id],
+            cost_estimated=bool(row[c.cost_estimated]),
         ),
         usage=TokenUsage(
             row[c.prompt_tokens], row[c.completion_tokens], None if cost is None else Decimal(cost)
@@ -338,4 +356,150 @@ def run_from(row: Row, c: Cols) -> ScrapeRun:
         reasons=tuple(row[c.reasons]),
         warnings=tuple(row[c.warnings]),
         errors=tuple(row[c.errors]),
+    )
+
+
+# ---------------------------------------------------------------------------- extraction state
+
+
+def state_values(state: ExtractionState) -> dict[str, Any]:
+    target = state.target
+    return {
+        "source": state.offer_id.source.value,
+        "external_id": state.offer_id.external_id,
+        "lease_owner": state.lease_owner,
+        "lease_until": state.lease_until,
+        "attempts": state.attempts,
+        "last_error": state.last_error,
+        "next_attempt_at": state.next_attempt_at,
+        "parked": state.parked,
+        "target_content_hash": None if target is None else target.content_hash.value,
+        "target_catalog_fingerprint": None if target is None else target.catalog_fingerprint,
+        "target_prompt_version": None if target is None else target.prompt_version,
+        "forced": state.forced,
+        "requested_profile": state.requested_profile,
+        "updated_at": state.updated_at,
+    }
+
+
+def state_from(row: Row, c: Cols) -> ExtractionState:
+    content_hash = row[c.target_content_hash]
+    target = (
+        None
+        if content_hash is None
+        else ExtractionTarget(
+            ContentHash(content_hash),
+            row[c.target_catalog_fingerprint] or "",
+            row[c.target_prompt_version] or "",
+        )
+    )
+    return ExtractionState(
+        offer_id=offer_id_of(row, c),
+        updated_at=row[c.updated_at],
+        lease_owner=row[c.lease_owner],
+        lease_until=row[c.lease_until],
+        attempts=row[c.attempts],
+        last_error=row[c.last_error],
+        next_attempt_at=row[c.next_attempt_at],
+        parked=bool(row[c.parked]),
+        target=target,
+        forced=bool(row[c.forced]),
+        requested_profile=row[c.requested_profile],
+    )
+
+
+# ---------------------------------------------------------------------------- batches
+
+
+def batch_values(batch: ExtractionBatch) -> dict[str, Any]:
+    cost = batch.usage.cost_usd
+    return {
+        "id": batch.id,
+        "profile": batch.profile,
+        "provider": batch.provider,
+        "model": batch.model,
+        "prompt_version": batch.prompt_version,
+        "catalog_fingerprint": batch.catalog_fingerprint,
+        "status": batch.status.value,
+        "parent_id": batch.parent_id,
+        "provider_batch_id": batch.provider_batch_id,
+        "created_at": batch.created_at,
+        "submitting_at": batch.submitting_at,
+        "submitted_at": batch.submitted_at,
+        "finished_at": batch.finished_at,
+        "item_count": len(batch.items),
+        "prompt_tokens": batch.usage.prompt_tokens,
+        "completion_tokens": batch.usage.completion_tokens,
+        "cost_usd": None if cost is None else str(cost),
+        "succeeded": batch.succeeded,
+        "failed": batch.failed,
+        "stale": batch.stale,
+        "error": batch.error,
+    }
+
+
+def batch_item_values(batch: ExtractionBatch) -> list[dict[str, Any]]:
+    return [
+        {
+            "batch_id": batch.id,
+            "position": position,
+            "source": item.offer_id.source.value,
+            "external_id": item.offer_id.external_id,
+            "content_hash": item.content_hash.value,
+        }
+        for position, item in enumerate(batch.items)
+    ]
+
+
+def batch_from(row: Row, c: Cols, items: Sequence[Row], ic: Cols) -> ExtractionBatch:
+    cost = row[c.cost_usd]
+    return ExtractionBatch(
+        id=row[c.id],
+        profile=row[c.profile],
+        provider=row[c.provider],
+        model=row[c.model],
+        prompt_version=row[c.prompt_version],
+        catalog_fingerprint=row[c.catalog_fingerprint],
+        items=tuple(
+            BatchItem(offer_id_of(item, ic), ContentHash(item[ic.content_hash])) for item in items
+        ),
+        created_at=row[c.created_at],
+        status=BatchStatus(row[c.status]),
+        parent_id=row[c.parent_id],
+        provider_batch_id=row[c.provider_batch_id],
+        submitting_at=row[c.submitting_at],
+        submitted_at=row[c.submitted_at],
+        finished_at=row[c.finished_at],
+        usage=TokenUsage(
+            row[c.prompt_tokens], row[c.completion_tokens], None if cost is None else Decimal(cost)
+        ),
+        succeeded=row[c.succeeded],
+        failed=row[c.failed],
+        stale=row[c.stale],
+        error=row[c.error],
+    )
+
+
+# ---------------------------------------------------------------------------- profile status
+
+
+def profile_status_values(status: ProfileStatus) -> dict[str, Any]:
+    return {
+        "profile": status.profile,
+        "blocked_until": status.blocked_until,
+        "reason": status.reason,
+        "usage_day": status.usage_day,
+        "requests_today": status.requests_today,
+        "updated_at": status.updated_at,
+    }
+
+
+def profile_status_from(row: Row, c: Cols) -> ProfileStatus:
+    return ProfileStatus(
+        profile=row[c.profile],
+        updated_at=row[c.updated_at],
+        blocked_until=row[c.blocked_until],
+        reason=row[c.reason],
+        usage_day=row[c.usage_day],
+        requests_today=row[c.requests_today],
     )

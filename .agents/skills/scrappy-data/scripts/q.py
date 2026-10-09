@@ -73,6 +73,14 @@ def main(argv: list[str]) -> int:
         sys.exit(__doc__)
 
     project = find_project()
+    if "SCRAPPY_CONFIG_DIR" not in env and (project / "config").is_dir():
+        env["SCRAPPY_CONFIG_DIR"] = str((project / "config").resolve())
+    if "SCRAPPY_DATA_DIR" not in env:
+        for root_cand in (project.parent, project.parent.parent, project):
+            if (root_cand / "data" / "scrappy.db").is_file():
+                env["SCRAPPY_DATA_DIR"] = str((root_cand / "data").resolve())
+                break
+
     proc = subprocess.run(
         ["uv", "run", "--project", str(project), "--quiet", "scrappy", *command],
         env=env,

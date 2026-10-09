@@ -18,6 +18,7 @@ from scrappy.application.use_cases.analytics.offers import (
     QueryOffers,
 )
 from scrappy.application.use_cases.analytics.sql import RunSql
+from scrappy.application.use_cases.extraction.status import ExtractionStatus
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,11 +39,15 @@ class QueryUseCases:
 
 
 def build_query_use_cases(
-    *, uow: UnitOfWorkFactory, queries: AnalyticsQueries, categories: CategoryProvider
+    *,
+    uow: UnitOfWorkFactory,
+    queries: AnalyticsQueries,
+    categories: CategoryProvider,
+    extraction: ExtractionStatus | None = None,
 ) -> QueryUseCases:
     resolver = ScopeResolver(uow=uow, queries=queries, categories=categories)
     return QueryUseCases(
-        overview=Overview(queries=queries, categories=categories),
+        overview=Overview(queries=queries, categories=categories, extraction=extraction),
         schema=Schema(queries=queries, categories=categories),
         offers=QueryOffers(resolver),
         offer=OfferDetail(uow=uow),
@@ -51,7 +56,7 @@ def build_query_use_cases(
         stats=Stats(resolver),
         deals=Deals(resolver),
         history=History(uow=uow, queries=queries, resolver=resolver),
-        health=Health(queries=queries, categories=categories, uow=uow),
+        health=Health(queries=queries, categories=categories, uow=uow, extraction=extraction),
         sql=RunSql(queries=queries),
     )
 

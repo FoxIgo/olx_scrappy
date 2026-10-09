@@ -21,6 +21,10 @@ ExtractOffer       ``extract:{offer_id}:{content_hash}:{cat}:``  explicit re-ext
 
 ``{cat}`` is ``CategoryCatalog.fingerprint``: after a schema version bump the same content
 must be extractable again, so the key has to change with the catalog.
+
+**ExtractOffer is legacy** (ADR 0010): extraction is no longer a job. The type and payload
+stay decodable for rows stored before; migration 0002 marked the unfinished ones OBSOLETE
+and no handler is registered for them.
 """
 
 from __future__ import annotations
@@ -52,6 +56,7 @@ class JobType(StrEnum):
     DISCOVER_PAGE = "discover_page"
     ENRICH_OFFER = "enrich_offer"
     EXTRACT_OFFER = "extract_offer"
+    """Legacy (ADR 0010): only decoded from old rows, never enqueued or handled."""
 
 
 class JobStatus(StrEnum):
@@ -62,6 +67,8 @@ class JobStatus(StrEnum):
     DONE = "done"
     FAILED = "failed"
     """Out of retries or failed permanently. ``ResumeRun`` can re-queue it."""
+    OBSOLETE = "obsolete"
+    """Superseded work that will never run (legacy ExtractOffer jobs, ADR 0010)."""
 
     @property
     def is_unfinished(self) -> bool:
@@ -83,6 +90,8 @@ class EnrichOfferPayload:
 
 @dataclass(frozen=True, slots=True)
 class ExtractOfferPayload:
+    """Legacy (ADR 0010): kept so old ``extract_offer`` rows still decode."""
+
     offer_id: OfferId
     content_hash: ContentHash
     """The content this job was created for; the job is skipped if the offer changed since."""

@@ -6,7 +6,7 @@ import pytest
 
 from scrappy.application.errors import ConflictError, InvalidRequestError, NotFoundError
 from scrappy.application.jobs.model import JobType
-from scrappy.application.policy import DiscoveryPolicy, ExtractionPolicy, PipelinePolicy
+from scrappy.application.policy import DiscoveryPolicy, PipelinePolicy
 from scrappy.application.ports.extractor import AttributeExtractor
 from scrappy.application.ports.job_queue import JobQueue
 from scrappy.application.ports.listing_source import (
@@ -163,23 +163,23 @@ class TestRuns:
 
 
 class TestExtractionTriggers:
-    async def test_auto_off_then_requeue_pending(self) -> None:
-        app, source = await ready_app(PipelinePolicy(extraction=ExtractionPolicy(auto=False)))
+    async def test_scraping_never_queues_extraction_the_backlog_heals(self) -> None:
+        app, source = await ready_app()
         source.script_page(URL, SearchPageResult(FetchOutcome.OK, observations=(details("1"),)))
         await app.start_run(SEARCH)
         await app.drain()
         assert app.jobs(JobType.EXTRACT_OFFER) == []
+        assert app.extractor.calls == []
+        assert await app.backlog() == 1
 
-        result = await app.requeue_extractions()
-        assert (result.considered, result.enqueued) == (1, 1)
-        again = await app.requeue_extractions()
-        assert (again.enqueued, again.already_queued) == (0, 1)
-        await app.drain()
+        await app.extract()
         assert len(app.extractor.calls) == 1
         assert app.store.state.links[(SEARCH, oid("1"))].is_relevant is True
-        assert (await app.requeue_extractions()).considered == 0  # up to date now
+        assert await app.backlog() == 0  # up to date now
+        await app.extract()
+        assert len(app.extractor.calls) == 1
 
-    async def test_schema_bump_re_extracts_only_that_category(self) -> None:
+    async def test_schema_bump_re_extracts_automatically(self) -> None:
         app, source = await ready_app()
         page = SearchPageResult(
             FetchOutcome.OK,
@@ -188,26 +188,30 @@ class TestExtractionTriggers:
         source.script_page(URL, page)
         await app.start_run(SEARCH)
         await app.drain()
+        await app.extract()
         assert len(app.extractor.calls) == 2
 
+        # a new catalog is a new extraction context for every offer (ADR 0010 section 2)
         app.categories.current = catalog(laptop_version=2)
-        result = await app.requeue_extractions(category=LAPTOP)
-        assert result.enqueued == 1
-        await app.drain()
-        assert [c.offer_id for c in app.extractor.calls[2:]] == [oid("1")]
-        latest = app.store.state.extractions[-1]
+        assert await app.backlog() == 2
+        await app.extract()
+        assert {c.offer_id for c in app.extractor.calls[2:]} == {oid("1"), oid("2")}
+        latest = next(e for e in reversed(app.store.state.extractions) if e.offer_id == oid("1"))
         assert latest.provenance.schema_version == 2
 
-    async def test_force_requeue_uses_a_tag_and_runs_once(self) -> None:
+    async def test_force_re_extracts_once(self) -> None:
         app, source = await ready_app()
         source.script_page(URL, SearchPageResult(FetchOutcome.OK, observations=(details("1"),)))
         await app.start_run(SEARCH)
         await app.drain()
-        result = await app.requeue_extractions(force=True, request_tag="better-model")
-        assert result.enqueued == 1
-        assert (await app.requeue_extractions(force=True, request_tag="better-model")).enqueued == 0
-        await app.drain()
+        await app.extract()
+        result = await app.force_reextract(category=LAPTOP)
+        assert result.marked == 1
+        assert await app.backlog() == 1
+        await app.extract()
         assert len(app.extractor.calls) == 2
+        await app.extract()
+        assert len(app.extractor.calls) == 2  # the force is consumed by the success
 
 
 class TestListOffersAndOverride:
@@ -225,6 +229,7 @@ class TestListOffersAndOverride:
         source.script_details(oid("3"), OfferDetailsResult.gone(OfferStatus.SOLD))
         await app.start_run(SEARCH)
         await app.drain()
+        await app.extract()
         return app
 
     async def test_relevance_filters(self) -> None:

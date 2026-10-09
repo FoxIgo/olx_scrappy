@@ -95,6 +95,13 @@ class CliEnv:
         )
 
 
+@pytest.fixture(autouse=True)
+def _no_real_llm_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Real profiles must never get a real key in tests (no network, ever)."""
+    for name in ("OPENROUTER_API_KEY", "SCRAPPY_OPENROUTER_API_KEY", "GEMINI_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     config = tmp_path / "config"
@@ -116,7 +123,8 @@ def env(settings: Settings) -> CliEnv:
 
 @pytest.fixture
 def ran(env: CliEnv) -> CliEnv:
-    """An env where search ``gtx-laptops`` was added and run inline once."""
+    """An env where search ``gtx-laptops`` was added, run inline once and extracted."""
     env.ok("search", "add", "gtx-laptops", SEARCH_URL, "--category", "laptop")
     env.ok("run", "gtx-laptops", "--inline")
+    env.ok("extract", "--inline")
     return env

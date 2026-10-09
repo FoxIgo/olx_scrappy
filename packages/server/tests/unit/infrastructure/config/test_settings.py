@@ -27,17 +27,15 @@ def test_defaults(tmp_path: Path) -> None:
     assert settings.llm_model == DEFAULT_LLM_MODEL
     assert settings.llm_base_url == "https://openrouter.ai/api/v1"
     assert settings.openrouter_api_key is None
-    assert settings.pipeline_extract_auto is True
+    assert settings.extraction_file == settings.config_dir / "extraction.yaml"
 
 
 def test_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SCRAPPY_LLM_MODEL", "x/y")
-    monkeypatch.setenv("SCRAPPY_PIPELINE_EXTRACT_AUTO", "false")
     monkeypatch.setenv("SCRAPPY_WORKER_BATCH_SIZE", "3")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-secret")
     settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
     assert settings.llm_model == "x/y"
-    assert settings.pipeline_extract_auto is False
     assert settings.worker_batch_size == 3
     assert settings.openrouter_api_key is not None
     assert settings.openrouter_api_key.get_secret_value() == "sk-secret"
@@ -53,7 +51,6 @@ def test_from_env_file(tmp_path: Path) -> None:
 
 
 def test_policy_from_settings_and_sources(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SCRAPPY_PIPELINE_EXTRACT_AUTO", "false")
     monkeypatch.setenv("SCRAPPY_LLM_MAX_DESCRIPTION_CHARS", "500")
     settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
     sources = parse_sources(
@@ -61,7 +58,6 @@ def test_policy_from_settings_and_sources(monkeypatch: pytest.MonkeyPatch) -> No
     )
     policy = build_pipeline_policy(settings, sources)
     assert isinstance(policy, PipelinePolicy)
-    assert policy.extraction.auto is False
     assert policy.extraction.description_max_chars == 500
     (source_id,) = sources.sources
     assert policy.health.for_source(source_id).max_rejected_ratio == 0.2

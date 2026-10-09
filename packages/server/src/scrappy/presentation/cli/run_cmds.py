@@ -19,11 +19,6 @@ from scrappy.presentation.worker import run_until_idle, wait_for_run
 
 runs_app = typer.Typer(help="Inspect runs.", no_args_is_help=True)
 
-NO_KEY_WARNING = (
-    "[yellow]OPENROUTER_API_KEY is not set: pages are fetched but extraction jobs will fail. "
-    "Set the key and run `scrappy resume RUN_ID` afterwards.[/]"
-)
-
 
 async def _print_report(app: Services, run_id: RunId) -> ScrapeRun:
     async with app.uow() as uow:
@@ -31,14 +26,13 @@ async def _print_report(app: Services, run_id: RunId) -> ScrapeRun:
         if run is None:
             raise NotFoundError(f"run {run_id} not found")
         jobs = await uow.jobs.list_for_run(run_id)
-    stdout().print(run_report(run, jobs))
+    backlog = await app.extraction_status.backlog(run.search)
+    stdout().print(run_report(run, jobs, extraction_backlog=backlog))
     return run
 
 
 async def _drive_inline(app: Services, run_id: RunId) -> None:
     console = stdout()
-    if not app.has_extractor:
-        console.print(NO_KEY_WARNING)
     done: Counter[str] = Counter()
 
     with console.status("Running jobs in-process...") as status:
@@ -64,13 +58,17 @@ def run(
     ctx: typer.Context,
     name: Annotated[str, typer.Argument(help="Saved search name.")],
     inline: Annotated[
-        bool, typer.Option("--inline", help="Run the worker loop in this process.")
+        bool,
+        typer.Option("--inline", help="Scrape in this process (extraction is not part of a run)."),
     ] = False,
     wait: Annotated[
         bool, typer.Option("--wait", help="Wait for a separate worker to finish the run.")
     ] = False,
 ) -> None:
-    """Start a run of a saved search (idempotent while one is running)."""
+    """Start a run of a saved search (idempotent while one is running).
+
+    A run is scraping only. Its offers enter the extraction backlog, which the worker's
+    extractor loop (or `scrappy extract --inline`) processes."""
 
     async def go(app: Services) -> None:
         console = stdout()

@@ -11,15 +11,13 @@ from scrappy.application.jobs.handlers.common import (
 from scrappy.application.jobs.model import (
     DiscoverPagePayload,
     EnrichOfferPayload,
-    ExtractOfferPayload,
     Job,
     JobResult,
 )
 from scrappy.application.policy import PipelinePolicy
 from scrappy.application.ports.listing_source import ListingSources, SearchPageResult
-from scrappy.application.ports.system import CategoryProvider, Clock, IdGenerator
+from scrappy.application.ports.system import Clock, IdGenerator
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
-from scrappy.domain.extraction import needs_extraction
 from scrappy.domain.offer import Offer, OfferId, OfferObservation, needs_details, snapshot_for
 from scrappy.domain.run import DiscoveryCoverage, PhaseMetrics, RunMetrics
 from scrappy.domain.search import SearchOffer
@@ -34,8 +32,8 @@ class DiscoverPageHandler:
     3. For each offer: decide ``needs_details`` *before* applying, apply the observation,
        write a snapshot if tracked fields changed, upsert the search link (deriving
        relevance from an existing extraction, so an offer is never classified twice).
-    4. Enqueue EnrichOffer for offers that need details; for detail-complete observations
-       enqueue ExtractOffer directly when auto-extraction is on and content changed.
+    4. Enqueue EnrichOffer for offers that need details. Extraction is not enqueued: the
+       extractor reconciles the backlog from the stored offers (ADR 0010).
     5. Enqueue the next page unless the max-pages cap is reached (then: truncated).
     """
 
@@ -44,14 +42,12 @@ class DiscoverPageHandler:
         *,
         uow: UnitOfWorkFactory,
         sources: ListingSources,
-        categories: CategoryProvider,
         clock: Clock,
         ids: IdGenerator,
         policy: PipelinePolicy,
     ) -> None:
         self._uow = uow
         self._sources = sources
-        self._categories = categories
         self._clock = clock
         self._ids = ids
         self._policy = policy
@@ -89,9 +85,7 @@ class DiscoverPageHandler:
         observations = _unique_by_offer(page)
         metrics = metrics.with_rejected(len(page.rejections))
 
-        catalog = await self._categories.catalog()
         now = self._clock.now()
-        auto_extract = self._policy.extraction.auto
         ids = [o.offer_id for o in observations]
         notes = rejection_notes(page.rejections)
         capped = False
@@ -130,19 +124,6 @@ class DiscoverPageHandler:
                 if enrich:
                     await uow.jobs.enqueue(
                         new_job(self._ids, EnrichOfferPayload(offer_id), run_id=run_id, now=now)
-                    )
-                elif (
-                    auto_extract
-                    and offer.content_hash is not None
-                    and needs_extraction(offer, extractions.get(offer_id), catalog)
-                ):
-                    await uow.jobs.enqueue(
-                        new_job(
-                            self._ids,
-                            ExtractOfferPayload(offer_id, offer.content_hash, catalog.fingerprint),
-                            run_id=run_id,
-                            now=now,
-                        )
                     )
 
             next_page = page.next_page

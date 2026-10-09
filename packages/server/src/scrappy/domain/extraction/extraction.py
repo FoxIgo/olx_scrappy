@@ -54,6 +54,17 @@ class ExtractionProvenance:
     """Version of the classified category's schema; ``None`` for ``other``."""
     content_hash: ContentHash
     extracted_at: datetime
+    catalog_fingerprint: str | None = None
+    """``CategoryCatalog.fingerprint`` the input was built with. ``None`` for extractions
+    stored before ADR 0010 (the per-category schema version rule applies to those)."""
+    profile: str | None = None
+    """Extraction profile (``config/extraction.yaml``) that produced it (ADR 0010 section 8)."""
+    provider: str | None = None
+    """Provider adapter of that profile (``openrouter``, ``openai_compatible``, ...)."""
+    batch_id: str | None = None
+    """Local ``extraction_batches`` id when it came from a provider batch."""
+    cost_estimated: bool = False
+    """True when ``usage.cost_usd`` is an allocation (batch cost split by token share)."""
 
     def __post_init__(self) -> None:
         require_aware(self.extracted_at, "extracted_at")
@@ -91,6 +102,11 @@ class OfferExtraction:
         extracted_at: datetime,
         usage: TokenUsage | None = None,
         notes: str | None = None,
+        catalog_fingerprint: str | None = None,
+        profile: str | None = None,
+        provider: str | None = None,
+        batch_id: str | None = None,
+        cost_estimated: bool = False,
     ) -> OfferExtraction:
         """Build an extraction after validating the category and attributes.
 
@@ -116,6 +132,11 @@ class OfferExtraction:
                 schema_version=schema_version,
                 content_hash=content_hash,
                 extracted_at=extracted_at,
+                catalog_fingerprint=catalog_fingerprint,
+                profile=profile,
+                provider=provider,
+                batch_id=batch_id,
+                cost_estimated=cost_estimated,
             ),
             usage=usage or TokenUsage(),
             notes=notes,
@@ -123,21 +144,33 @@ class OfferExtraction:
 
 
 def needs_extraction(
-    offer: Offer, latest: OfferExtraction | None, catalog: CategoryCatalog
+    offer: Offer,
+    latest: OfferExtraction | None,
+    catalog: CategoryCatalog,
+    prompt_version: str | None = None,
 ) -> bool:
-    """Should this offer be sent to the LLM (again)?
+    """Is this offer's latest extraction missing or out of date? (ADR 0010 section 2)
 
     * Not before it has content (``content_hash`` needs a description).
     * Yes if never extracted, or the content changed since (R11 cost control).
-    * Yes if it was classified into a category whose schema version changed since.
-      A category that was removed from the catalog also counts as changed.
-    * ``other`` extractions are not redone for schema changes (only content changes).
+    * Yes if the extraction was made with a different catalog (``catalog_fingerprint``) or,
+      when ``prompt_version`` is given, a different prompt version.
+    * Legacy extractions without a fingerprint (stored before ADR 0010) fall back to the
+      old rule: re-extract when the classified category's schema version changed (a removed
+      category counts as changed); ``other`` is not redone for schema changes.
+    * The model is deliberately **not** part of the rule: switching or falling back to
+      another profile must not re-extract everything. Use a forced re-extraction for that.
     """
     if offer.content_hash is None:
         return False
     if latest is None or latest.provenance.content_hash != offer.content_hash:
         return True
+    provenance = latest.provenance
+    if prompt_version is not None and provenance.prompt_version != prompt_version:
+        return True
+    if provenance.catalog_fingerprint is not None:
+        return provenance.catalog_fingerprint != catalog.fingerprint
     if latest.category == OTHER_CATEGORY:
         return False
     current = catalog.get(latest.category)
-    return current is None or current.version != latest.provenance.schema_version
+    return current is None or current.version != provenance.schema_version

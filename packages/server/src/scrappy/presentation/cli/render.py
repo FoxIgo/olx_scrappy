@@ -144,11 +144,16 @@ def runs_table(runs: Sequence[ScrapeRun], *, title: str = "Runs") -> Table:
     return table
 
 
+def _shown_phases(run: ScrapeRun) -> list[Phase]:
+    """Extraction is no longer part of a run (ADR 0010); only old runs have its metrics."""
+    return [p for p in Phase if p is not Phase.EXTRACTION or run.metrics.extraction.seen]
+
+
 def _phase_table(run: ScrapeRun) -> Table:
     table = Table(title="Phases")
     for column in ("Phase", "Accepted", "Rejected", "Rejected %", "Fetch outcomes"):
         table.add_column(column)
-    for phase in Phase:
+    for phase in _shown_phases(run):
         metrics = run.metrics.phase(phase)
         outcomes = ", ".join(f"{o.value}={n}" for o, n in sorted(metrics.outcomes.items()))
         table.add_row(
@@ -163,7 +168,7 @@ def _phase_table(run: ScrapeRun) -> Table:
 
 def _fill_rate_table(run: ScrapeRun) -> Table | None:
     rows: list[tuple[str, str, PhaseMetrics]] = []
-    for phase in Phase:
+    for phase in _shown_phases(run):
         metrics = run.metrics.phase(phase)
         for name in sorted(metrics.applicable):
             rows.append((phase.value, name, metrics))
@@ -183,7 +188,9 @@ def _fill_rate_table(run: ScrapeRun) -> Table | None:
     return table
 
 
-def run_report(run: ScrapeRun, jobs: Sequence[Job] | None = None) -> RenderableType:
+def run_report(
+    run: ScrapeRun, jobs: Sequence[Job] | None = None, *, extraction_backlog: int | None = None
+) -> RenderableType:
     metrics = run.metrics
     head = Table.grid(padding=(0, 2))
     head.add_row("Run", str(run.id))
@@ -200,11 +207,18 @@ def run_report(run: ScrapeRun, jobs: Sequence[Job] | None = None) -> RenderableT
     total = coverage.total_reported if coverage.total_reported is not None else "?"
     head.add_row("Coverage", f"{coverage.pages} page(s), site reports {total} result(s)")
     usage = metrics.usage
-    cost = f", cost ${usage.cost_usd:.4f}" if usage.cost_usd is not None else ""
-    head.add_row(
-        "LLM tokens",
-        f"{usage.prompt_tokens} prompt + {usage.completion_tokens} completion{cost}",
-    )
+    if usage.total_tokens or usage.cost_usd is not None:  # runs from before ADR 0010
+        cost = f", cost ${usage.cost_usd:.4f}" if usage.cost_usd is not None else ""
+        head.add_row(
+            "LLM tokens",
+            f"{usage.prompt_tokens} prompt + {usage.completion_tokens} completion{cost}",
+        )
+    if extraction_backlog is not None:
+        head.add_row(
+            "Extraction",
+            f"backlog for this search: {extraction_backlog} offer(s)"
+            + (" (processed by the extractor loop)" if extraction_backlog else ""),
+        )
 
     parts: list[RenderableType] = [Panel(head, title="Run report"), _phase_table(run)]
     fills = _fill_rate_table(run)

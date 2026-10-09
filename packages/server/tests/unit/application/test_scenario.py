@@ -1,4 +1,5 @@
-"""End-to-end application scenarios over in-memory fakes (ADR 0006 flow)."""
+"""End-to-end application scenarios over in-memory fakes (ADR 0006 + ADR 0010 flow):
+runs scrape only, the extractor reconciles the backlog afterwards."""
 
 from __future__ import annotations
 
@@ -74,13 +75,22 @@ async def test_two_runs_with_enrichment_source() -> None:
     await app.drain()
     state = app.store.state
 
+    run1 = state.runs[first.run.id]
+    assert run1.status is RunStatus.COMPLETED, run1.reasons  # done when scraping is done
+    assert app.extractor.calls == []
+    assert await app.backlog() == 3
+    assert state.links[(SEARCH, A)].is_relevant is None  # not classified yet
+
+    assert await app.extract() == 3  # the extractor reconciles afterwards
+    state = app.store.state
     assert set(state.offers) == {A, B, C}
     detail_calls = source.detail_call_ids()
     assert sorted(detail_calls, key=str) == [A, B, C]  # each offer enriched exactly once
     assert len(app.jobs(JobType.DISCOVER_PAGE)) == 2
     assert len(app.jobs(JobType.ENRICH_OFFER)) == 3
-    assert len(app.jobs(JobType.EXTRACT_OFFER)) == 3
+    assert app.jobs(JobType.EXTRACT_OFFER) == []
     assert len(app.extractor.calls) == 3
+    assert await app.backlog() == 0
     assert state.snapshots == []  # first observations are not changes
     assert all(o.has_details and o.content_hash for o in state.offers.values())
 
@@ -89,14 +99,16 @@ async def test_two_runs_with_enrichment_source() -> None:
     assert links[B].is_relevant is True
     assert links[C].is_relevant is False  # charger classified as other
 
-    run1 = state.runs[first.run.id]
-    assert run1.status is RunStatus.COMPLETED, run1.reasons
     assert run1.metrics.coverage.pages == 2
     assert run1.metrics.discovery.accepted == 5  # 3 + 2 unique per page
     assert run1.metrics.enrichment.accepted == 3
-    assert run1.metrics.extraction.accepted == 3
-    assert run1.metrics.usage.total_tokens == 360
+    assert run1.metrics.extraction.seen == 0  # extraction is not part of a run
+    assert run1.metrics.usage.total_tokens == 0
     assert run1.metrics.discovery.fill_rate("price") == 1.0
+    extraction = state.extractions[0]
+    assert extraction.provenance.profile == "main"
+    assert extraction.provenance.catalog_fingerprint == app.catalog.fingerprint
+    assert extraction.usage.total_tokens == 120
     assert all(j.status is JobStatus.DONE for j in app.jobs())
 
     relevant = await app.list_offers(OfferFilter(SEARCH, RelevanceFilter.RELEVANT))
@@ -108,6 +120,7 @@ async def test_two_runs_with_enrichment_source() -> None:
     second = await app.start_run(SEARCH)
     assert second.created
     await app.drain()
+    await app.extract()
     state = app.store.state
 
     assert source.detail_call_ids()[3:] == [B]
@@ -125,7 +138,6 @@ async def test_two_runs_with_enrichment_source() -> None:
     assert state.links[(SEARCH, A)].first_seen_at == a_before.first_seen_at
 
     assert len(app.extractor.calls) == 3  # price is not content: no new LLM call
-    assert len(app.jobs(JobType.EXTRACT_OFFER)) == 3
     run2 = state.runs[second.run.id]
     assert run2.status is RunStatus.COMPLETED
     assert run2.metrics.enrichment.accepted == 1
@@ -148,16 +160,18 @@ async def test_detail_complete_source_skips_enrichment() -> None:
 
     await app.start_run(name)
     await app.drain()
+    assert await app.extract() == 2
     state = app.store.state
     assert source.detail_calls == []
     assert app.jobs(JobType.ENRICH_OFFER) == []
-    assert len(app.jobs(JobType.EXTRACT_OFFER)) == 2
     assert state.links[(name, x.offer_id)].is_relevant is True
     assert state.links[(name, y.offer_id)].is_relevant is False
 
     app.clock.advance()
     run = await app.start_run(name)
     await app.drain()
+    assert await app.backlog() == 1  # Y's content changed: back in the backlog by itself
+    await app.extract()
     state = app.store.state
     assert source.detail_calls == []
     assert len(app.extractor.calls) == 3  # only Y, whose content changed
@@ -188,8 +202,10 @@ async def test_shared_offer_is_classified_once_for_two_searches() -> None:
     source.script_page(URL + "?cheap", only_a)
     await app.start_run(SEARCH)
     await app.drain()
+    await app.extract()
     await app.start_run(other)
     await app.drain()
+    await app.extract()
     assert len(app.extractor.calls) == 3
     link = app.store.state.links[(other, A)]
     assert link.is_relevant is True  # derived from the existing extraction at link time

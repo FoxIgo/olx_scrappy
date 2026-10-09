@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import AliasChoices, Field, SecretStr, model_validator
+from dotenv import dotenv_values
+from pydantic import AliasChoices, Field, PrivateAttr, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_LLM_MODEL = "openai/gpt-4o-mini"
@@ -32,7 +34,8 @@ class Settings(BaseSettings):
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
-    # --- LLM (OpenRouter)
+    # --- LLM. Profiles live in config/extraction.yaml (ADR 0010); without that file one
+    # ``openrouter`` profile is derived from these SCRAPPY_LLM_* values.
     openrouter_api_key: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices("OPENROUTER_API_KEY", "SCRAPPY_OPENROUTER_API_KEY"),
@@ -55,9 +58,16 @@ class Settings(BaseSettings):
     worker_batch_size: int = Field(default=10, ge=1)
 
     # --- pipeline
-    pipeline_extract_auto: bool = True
     pipeline_discovery_max_pages: int = Field(default=100, ge=1)
     pipeline_retry_max_attempts: int = Field(default=5, ge=1)
+
+    _secrets_file: Path | None = PrivateAttr(default=None)
+    """The ``.env`` file these settings were read from (``None`` = none); ``secret`` uses it."""
+
+    def __init__(self, **values: Any) -> None:
+        super().__init__(**values)
+        env_file = values.get("_env_file", self.model_config.get("env_file"))
+        self._secrets_file = Path(env_file) if isinstance(env_file, str | Path) else None
 
     @model_validator(mode="after")
     def _derive_defaults(self) -> Settings:
@@ -75,3 +85,22 @@ class Settings(BaseSettings):
     @property
     def sources_file(self) -> Path:
         return self.config_dir / "sources.yaml"
+
+    @property
+    def extraction_file(self) -> Path:
+        return self.config_dir / "extraction.yaml"
+
+    def secret(self, name: str) -> str | None:
+        """A secret named by config (``api_key_env``): the environment first, then the
+        ``.env`` file these settings were read from. ``OPENROUTER_API_KEY`` comes from the
+        settings field (which also covers its ``SCRAPPY_`` alias and the ``.env`` file)."""
+        if name == "OPENROUTER_API_KEY":
+            key = self.openrouter_api_key
+            return None if key is None else key.get_secret_value() or None
+        value = os.environ.get(name)
+        if value:
+            return value
+        env_file = self._secrets_file
+        if env_file is not None and env_file.is_file():
+            return dotenv_values(env_file).get(name) or None
+        return None

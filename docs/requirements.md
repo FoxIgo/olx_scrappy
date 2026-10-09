@@ -151,3 +151,23 @@ Notifications, export, price analytics, cross-site duplicate matching, image dow
   description), so for OLX the EnrichOffer stage is skipped. A parser for the embedded
   `__PRERENDERED_STATE__` in the HTML is kept as a tested fallback.
 - Searches are capped at ~1000 results; the run report warns when a search is truncated.
+
+## Round 7 — extraction redesign (after measuring a real run)
+
+### R17. Extraction is decoupled from scraping and uses provider batching
+- Measured: scraping ~1 min vs sequential LLM extraction ~47 min for one run (368 offers).
+- Extraction becomes a reconciling loop over the database (backlog = offers without an
+  up-to-date extraction), not jobs enqueued by the scraper. Failures, schema/model
+  changes and a missing key heal automatically.
+- One `worker` process runs both loops (`--only scrape|extract` to split them).
+  A run = scraping only; `run --inline` scrapes only.
+- LLM calls go through OpenRouter's **Batch API** (about 50% cheaper, results usually
+  within minutes, ≤ 24 h). Sync mode stays as a fallback. The user will pick a faster,
+  batch-capable model.
+- Details: [ADR 0010](adr/0010-decoupled-batch-extraction.md).
+
+### R18. Free-tier data terms are acceptable
+- Google AI Studio's free tier may use prompts for product improvement and human review.
+  The user accepts this: extraction input is public OLX listing text.
+- Still don't send what isn't needed: the extraction input contains title, description,
+  params and price only (no seller data). It stays that way for every provider.

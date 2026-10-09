@@ -56,6 +56,8 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4", "RUF", "PT", "ASYNC", "TID
 "tests/**" = ["S101"]
 # compact "x is not None and x.field == ..." narrowing asserts in adapter round-trip tests
 "tests/integration/**" = ["PT018"]
+# one-off dev tools (synthetic data seeding): long report lines and asserts are fine
+"scripts/dev/**" = ["E501", "PT018"]
 
 # ---------------------------------------------------------------- pyright
 [tool.pyright]

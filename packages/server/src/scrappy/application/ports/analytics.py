@@ -86,8 +86,6 @@ class OverviewRows:
 class ExtractionCoverage:
     offers: int
     extracted: int
-    jobs: Mapping[str, int]
-    """``extract_offer`` jobs by status (pending/running/done/failed)."""
 
 
 @dataclass(frozen=True, slots=True)

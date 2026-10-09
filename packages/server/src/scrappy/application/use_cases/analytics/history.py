@@ -17,6 +17,10 @@ from scrappy.application.use_cases.analytics.common import (
     seen_at,
 )
 from scrappy.application.use_cases.analytics.offers import change_value
+from scrappy.application.use_cases.extraction.status import (
+    ExtractionStatus,
+    ExtractionStatusReport,
+)
 from scrappy.domain.category import Category
 from scrappy.domain.offer import OfferId, OfferStatus, TrackedField
 from scrappy.domain.run import Phase, RunStatus, ScrapeRun
@@ -119,11 +123,17 @@ class History:
 
 class Health:
     def __init__(
-        self, *, queries: AnalyticsQueries, categories: CategoryProvider, uow: UnitOfWorkFactory
+        self,
+        *,
+        queries: AnalyticsQueries,
+        categories: CategoryProvider,
+        uow: UnitOfWorkFactory,
+        extraction: ExtractionStatus | None = None,
     ) -> None:
         self._queries = queries
         self._categories = categories
         self._uow = uow
+        self._extraction = extraction
 
     async def __call__(self, *, search: SearchName | None = None, runs: int = 5) -> Answer:
         if runs < 1:
@@ -146,17 +156,18 @@ class Health:
             notes.append("no runs yet")
 
         coverage = await self._queries.extraction_coverage(search)
-        jobs = {
-            status: coverage.jobs.get(status, 0)
-            for status in ("pending", "running", "done", "failed")
-        }
-        if jobs["failed"]:
-            notes.append(
-                f"{jobs['failed']} extraction job(s) failed; `scrappy resume RUN_ID` retries"
-            )
         unextracted = coverage.offers - coverage.extracted
         if unextracted:
             notes.append(f"{unextracted} offer(s) have no extraction yet")
+        extraction: Json = {
+            "offers": coverage.offers,
+            "extracted": coverage.extracted,
+            "without_extraction": unextracted,
+        }
+        if self._extraction is not None:
+            report = await self._extraction(search=search)
+            extraction.update(extraction_view(report, scoped=search is not None))
+            notes += extraction_notes(report, scoped=search is not None)
 
         category_names = {s.category for s in searches}
         fills: list[Json] = []
@@ -184,12 +195,7 @@ class Health:
                 )
         data: Json = {
             "runs": run_views,
-            "extraction": {
-                "offers": coverage.offers,
-                "extracted": coverage.extracted,
-                "without_extraction": unextracted,
-                "jobs": jobs,
-            },
+            "extraction": extraction,
             "attribute_null_rates": fills,
             "stale": stale,
         }
@@ -212,6 +218,78 @@ class Health:
                 }
             )
         return result
+
+
+MAX_PARKED_SHOWN = 10
+
+
+def _backlog(report: ExtractionStatusReport, scoped: bool) -> int:
+    if scoped and report.search_backlog is not None:
+        return report.search_backlog
+    return report.backlog
+
+
+def extraction_view(report: ExtractionStatusReport, *, scoped: bool) -> Json:
+    """The extractor's state for ``q health`` (ADR 0010 section 6)."""
+    return {
+        "backlog": _backlog(report, scoped),
+        "open_batches": [
+            {
+                "id": b.id,
+                "profile": b.profile,
+                "status": b.status.value,
+                "items": len(b.items),
+                "created_at": b.created_at,
+                "age_minutes": round((report.at - b.created_at).total_seconds() / 60, 1),
+            }
+            for b in report.open_batches
+        ],
+        "parked": len(report.parked),
+        "parked_offers": [
+            {
+                "offer": str(s.offer_id),
+                "attempts": s.attempts,
+                "last_error": s.last_error,
+                "since": s.updated_at,
+            }
+            for s in report.parked[:MAX_PARKED_SHOWN]
+        ],
+        "profiles": [
+            {
+                "name": v.profile.name,
+                "provider": v.profile.provider,
+                "model": v.profile.model,
+                "mode": v.profile.mode.value,
+                "default": v.is_default,
+                "in_fallback": v.in_fallback,
+                "blocked": v.blocked,
+                "blocked_until": v.status.blocked_until,
+                "reason": v.status.reason,
+                "requests_today": v.status.requests_on(report.at),
+                "daily_limit": v.profile.capabilities.daily_limit,
+            }
+            for v in report.profiles
+        ],
+    }
+
+
+def extraction_notes(report: ExtractionStatusReport, *, scoped: bool) -> list[str]:
+    notes: list[str] = []
+    backlog = _backlog(report, scoped)
+    if backlog:
+        notes.append(
+            f"{backlog} offer(s) wait for extraction; the worker's extractor loop "
+            "(or `scrappy extract --inline`) processes them"
+        )
+    if report.parked:
+        notes.append(
+            f"{len(report.parked)} offer(s) parked after repeated extraction failures; "
+            "`scrappy extract force --parked` retries them"
+        )
+    for view in report.profiles:
+        if view.blocked:
+            notes.append(f"extraction profile {view.profile.name} is blocked: {view.status.reason}")
+    return notes
 
 
 def _first_seen(row: OfferRow, search: SearchName | None) -> datetime:
@@ -251,4 +329,4 @@ def _run_view(run: ScrapeRun) -> Json:
     }
 
 
-__all__ = ["Health", "History"]
+__all__ = ["Health", "History", "extraction_notes", "extraction_view"]

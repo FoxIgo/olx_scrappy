@@ -47,7 +47,9 @@ def test_overview(ran: CliEnv) -> None:
         "irrelevant": 1,
         "relevance_unknown": 0,
         "extracted": 4,
+        "extraction_backlog": 0,
     }
+    assert data["extraction"]["backlog"] == 0 and data["extraction"]["default_profile"] == "custom"
     run_id = search["last_run"]["id"]
     assert len(run_id) == 32 and search["last_run"]["status"] == "completed"
     assert search["last_run"]["started_at"].endswith("Z")
@@ -164,8 +166,13 @@ def test_health(ran: CliEnv) -> None:
     document = q(ran, "health", "--search", "gtx-laptops", "--runs", "3")
     data = document["data"]
     assert data["runs"][0]["status"] == "completed"
-    assert data["runs"][0]["phases"]["extraction"]["accepted"] == 4
-    assert data["extraction"]["offers"] == 4 and data["extraction"]["without_extraction"] == 0
+    assert data["runs"][0]["phases"]["extraction"]["accepted"] == 0  # not part of runs
+    extraction = data["extraction"]
+    assert extraction["offers"] == 4 and extraction["without_extraction"] == 0
+    assert extraction["backlog"] == 0 and extraction["open_batches"] == []
+    assert extraction["parked"] == 0
+    assert extraction["profiles"][0]["name"] == "custom"
+    assert "jobs" not in extraction
     rates = {r["attribute"]: r for r in data["attribute_null_rates"]}
     assert rates["ram_gb"]["extracted"] == 3 and rates["ram_gb"]["null"] == 0
     assert rates["gpu"]["null"] == 2 and rates["gpu"]["null_rate"] == 0.667

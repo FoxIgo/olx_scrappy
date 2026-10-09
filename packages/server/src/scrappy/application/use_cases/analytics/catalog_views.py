@@ -6,6 +6,7 @@ from scrappy.application.errors import InvalidRequestError
 from scrappy.application.ports.analytics import AnalyticsQueries
 from scrappy.application.ports.system import CategoryProvider
 from scrappy.application.use_cases.analytics.common import Answer, Json
+from scrappy.application.use_cases.extraction.status import ExtractionStatus
 from scrappy.domain.category import Category, CategoryName
 from scrappy.domain.run import ScrapeRun
 
@@ -37,9 +38,16 @@ def category_view(category: Category) -> Json:
 
 
 class Overview:
-    def __init__(self, *, queries: AnalyticsQueries, categories: CategoryProvider) -> None:
+    def __init__(
+        self,
+        *,
+        queries: AnalyticsQueries,
+        categories: CategoryProvider,
+        extraction: ExtractionStatus | None = None,
+    ) -> None:
         self._queries = queries
         self._categories = categories
+        self._extraction = extraction
 
     async def __call__(self) -> Answer:
         rows = await self._queries.overview()
@@ -48,18 +56,21 @@ class Overview:
         for counts in rows.searches:
             search = counts.search
             runs = await self._queries.recent_runs(search.name, 1)
+            offer_counts: Json = {
+                "total": counts.offers,
+                "relevant": counts.relevant,
+                "irrelevant": counts.irrelevant,
+                "relevance_unknown": counts.unknown,
+                "extracted": counts.extracted,
+            }
+            if self._extraction is not None:
+                offer_counts["extraction_backlog"] = await self._extraction.backlog(search.name)
             searches.append(
                 {
                     "name": str(search.name),
                     "source": str(search.source),
                     "category": str(search.category),
-                    "offers": {
-                        "total": counts.offers,
-                        "relevant": counts.relevant,
-                        "irrelevant": counts.irrelevant,
-                        "relevance_unknown": counts.unknown,
-                        "extracted": counts.extracted,
-                    },
+                    "offers": offer_counts,
                     "last_run": run_brief(runs[0]) if runs else None,
                 }
             )
@@ -78,6 +89,17 @@ class Overview:
             },
         }
         notes: list[str] = []
+        if self._extraction is not None:
+            report = await self._extraction()
+            data["extraction"] = {
+                "backlog": report.backlog,
+                "open_batches": len(report.open_batches),
+                "parked": len(report.parked),
+                "default_profile": self._extraction.profiles.default,
+                "blocked_profiles": [v.profile.name for v in report.profiles if v.blocked],
+            }
+            if report.backlog:
+                notes.append(f"{report.backlog} offer(s) wait for extraction")
         if not searches:
             notes.append("no saved searches yet; add one with `scrappy search add`")
         unextracted = rows.offers_total - rows.offers_extracted
