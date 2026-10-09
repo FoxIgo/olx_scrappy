@@ -4,6 +4,16 @@ Personal tool that scrapes marketplace offers (OLX.pl first), tracks changes, an
 LLM to extract structured attributes. Python server in `packages/server`
 (hexagonal layout, uv). Design notes live in [docs/](docs/README.md).
 
+## Quick start (Windows)
+
+`start.bat` at the repo root syncs dependencies, creates `packages/server/.env` from the
+example on first use, and stores data in `./data`:
+
+```bat
+start.bat                                  :: interactive menu
+start.bat offers list gtx-laptops --all    :: any scrappy command, passed through
+```
+
 ## Develop
 
 ```sh
