@@ -111,7 +111,8 @@ class OfferExtraction:
         """Build an extraction after validating the category and attributes.
 
         Raises :class:`InvalidValueError` for an unknown category or attributes that do not
-        match its schema; the caller treats that as a rejected LLM output (ADR 0007).
+        match its schema, or for a real category whose attributes are all null (nothing was
+        extracted); the caller treats that as a rejected LLM output (ADR 0007).
         """
         if category == OTHER_CATEGORY:
             attributes: dict[str, AttributeValue | None] = {}
@@ -121,6 +122,8 @@ class OfferExtraction:
             if definition is None:
                 raise InvalidValueError(f"LLM returned unknown category {category}")
             attributes = definition.validate_attributes(raw_attributes)
+            if attributes and all(value is None for value in attributes.values()):
+                raise InvalidValueError(f"every attribute of {category} is null: nothing extracted")
             schema_version = definition.version
         return cls(
             offer_id=offer_id,

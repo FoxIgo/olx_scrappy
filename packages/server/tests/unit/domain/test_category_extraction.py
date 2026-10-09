@@ -119,6 +119,22 @@ class TestOfferExtraction:
         assert extraction.provenance.schema_version is None
         assert dict(extraction.attributes) == {}
 
+    def test_real_category_with_every_attribute_null_rejected(self) -> None:
+        offer = enriched()
+        assert offer.content_hash is not None
+        for raw in ({}, {"ram_gb": None}):
+            with pytest.raises(InvalidValueError, match="every attribute"):
+                OfferExtraction.validated(
+                    offer_id=offer.id,
+                    category=LAPTOP,
+                    raw_attributes=raw,
+                    catalog=catalog(),
+                    model="m",
+                    prompt_version="p",
+                    content_hash=offer.content_hash,
+                    extracted_at=at(2),
+                )
+
     def test_unknown_category_rejected(self) -> None:
         offer = enriched()
         assert offer.content_hash is not None

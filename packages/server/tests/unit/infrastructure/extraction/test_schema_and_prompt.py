@@ -69,7 +69,18 @@ def test_unknown_category_becomes_other() -> None:
 
 def test_other_ignores_attributes_and_category_is_case_insensitive() -> None:
     assert schema().validate({"category": "other", "attributes": {"a": 1}}).attributes == {}
-    assert schema().validate({"category": "Laptop", "attributes": {}}).category == LAPTOP
+    answer = schema().validate({"category": "Laptop", "attributes": {"ram_gb": 8}})
+    assert answer.category == LAPTOP
+
+
+@pytest.mark.parametrize("attributes", [{}, {"ram_gb": None, "gpu": None}])
+def test_a_real_category_with_every_attribute_null_is_invalid(attributes: object) -> None:
+    with pytest.raises(InvalidAnswerError, match="every attribute of 'laptop' is null"):
+        schema().validate({"category": "laptop", "attributes": attributes})
+
+
+def test_other_with_no_attributes_stays_valid() -> None:
+    assert schema().validate({"category": "other", "attributes": {}}).attributes == {}
 
 
 @pytest.mark.parametrize(

@@ -18,9 +18,10 @@ body carries quota details (Google ``RESOURCE_EXHAUSTED``, ``quotaId`` ...PerDay
 blocks the profile until the provider's next reset) or ``retry_after_seconds`` (per-minute:
 the adapter first waits ``retryDelay`` and retries ``rate_limit_waits`` times, then the
 profile is paused briefly); a plain 429 stays TRANSIENT. 5xx are retried in the adapter
-``transient_retries`` times with a short backoff before they count as TRANSIENT; 401/403/404
-and connection errors -> UNAVAILABLE (the reconciler falls back to the next profile); timeout,
-408/409/425/429 and 5xx -> TRANSIENT; other 4xx -> PERMANENT; invalid answers (after one
+``transient_retries`` times with a short backoff; if they persist (a provider outage) they
+become UNAVAILABLE, like timeouts: no attempt is charged to the offer and the reconciler
+falls back to the next profile. 401/403/404 and connection errors -> UNAVAILABLE;
+408/409/425/429 -> TRANSIENT; other 4xx -> PERMANENT; invalid answers (after one
 corrective retry) -> INVALID_OUTPUT.
 
 Health check: ``GET {base_url}/models`` and verify the model id is listed (Ollama, LM Studio
@@ -234,6 +235,13 @@ class OpenAICompatibleExtractor:
                 ):
                     delay = error.retry_after + 1.0
                     rate_waits += 1
+                elif server_error:  # persistent outage: the provider's fault, not the offer's
+                    raise _ProviderError(
+                        error.reason,
+                        kind=RejectionKind.UNAVAILABLE,
+                        retryable=True,
+                        status=error.status,
+                    ) from error
                 else:
                     raise
                 log.info("%s: %s; retrying in %.0fs", self._model, error.reason[:120], delay)
@@ -255,7 +263,7 @@ class OpenAICompatibleExtractor:
             return await self._call(request, schema, correction, self.structured_output)
         except openai.APITimeoutError as error:
             raise _ProviderError(
-                f"LLM request timed out: {error}", kind=RejectionKind.TRANSIENT, retryable=True
+                f"LLM request timed out: {error}", kind=RejectionKind.UNAVAILABLE, retryable=True
             ) from error
         except openai.APIConnectionError as error:
             raise _ProviderError(

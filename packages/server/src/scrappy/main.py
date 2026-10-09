@@ -41,6 +41,7 @@ from scrappy.application.ports.queries import OfferQueries
 from scrappy.application.ports.system import CategoryProvider, Clock, IdGenerator
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
 from scrappy.application.use_cases.analytics import QueryUseCases, build_query_use_cases
+from scrappy.application.use_cases.benchmarks import ImportBenchmarks, ListComponents
 from scrappy.application.use_cases.extraction import (
     ExtractionStatus,
     ForceReextract,
@@ -57,6 +58,7 @@ from scrappy.application.use_cases.runs import (
 )
 from scrappy.application.use_cases.searches import AddSavedSearch, SetRelevanceOverride
 from scrappy.domain.shared import DomainError, SourceId
+from scrappy.infrastructure.benchmarks import BlenderOpenDataDownloader, BlenderOpenDataSource
 from scrappy.infrastructure.config.categories import YamlCategoryProvider
 from scrappy.infrastructure.config.errors import ConfigError
 from scrappy.infrastructure.config.extraction import load_extraction_config
@@ -149,6 +151,8 @@ class Container:
     force_reextract: ForceReextract
     extraction_policy: ExtractionPolicy
     extraction_config_source: str
+    import_benchmarks: ImportBenchmarks
+    list_components: ListComponents
     log_level: str
     worker_poll_interval: float
     _fetchers: list[PageFetcher] = field(default_factory=list[PageFetcher], repr=False)
@@ -327,6 +331,13 @@ async def build_app(
         extraction_config_source=(
             "injected" if extractor is not None else extraction_config.source
         ),
+        import_benchmarks=ImportBenchmarks(
+            uow=uow,
+            source=BlenderOpenDataSource(),
+            downloader=BlenderOpenDataDownloader(settings.data_dir / "benchmarks"),
+            clock=clock,
+        ),
+        list_components=ListComponents(uow=uow),
         log_level=settings.log_level,
         worker_poll_interval=settings.worker_poll_interval,
         _fetchers=fetchers,

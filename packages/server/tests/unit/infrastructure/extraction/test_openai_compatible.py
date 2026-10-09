@@ -176,11 +176,11 @@ async def test_bad_request_downgrades_to_json_object_for_later_calls() -> None:
 @pytest.mark.parametrize(
     ("reply", "kind"),
     [
-        (httpx.ReadTimeout("slow"), RejectionKind.TRANSIENT),
+        (httpx.ReadTimeout("slow"), RejectionKind.UNAVAILABLE),
         (httpx.Response(429, json={"error": "x"}), RejectionKind.TRANSIENT),
         (httpx.Response(408, json={"error": "x"}), RejectionKind.TRANSIENT),
-        (httpx.Response(500, json={"error": "x"}), RejectionKind.TRANSIENT),
-        (httpx.Response(503, json={"error": "x"}), RejectionKind.TRANSIENT),
+        (httpx.Response(500, json={"error": "x"}), RejectionKind.UNAVAILABLE),
+        (httpx.Response(503, json={"error": "x"}), RejectionKind.UNAVAILABLE),
         (httpx.ConnectError("down"), RejectionKind.UNAVAILABLE),
         (httpx.Response(402, json={"error": "x"}), RejectionKind.QUOTA),
     ],
@@ -374,7 +374,7 @@ async def test_a_429_without_retry_info_gets_a_default_pause() -> None:
     assert result.retry_after_seconds == DEFAULT_RATE_WAIT
 
 
-async def test_server_errors_are_retried_with_backoff_then_surface_as_transient() -> None:
+async def test_server_errors_are_retried_with_backoff_then_surface_as_unavailable() -> None:
     unavailable = httpx.Response(
         503, json={"error": {"code": 503, "message": "high demand", "status": "UNAVAILABLE"}}
     )
@@ -388,7 +388,8 @@ async def test_server_errors_are_retried_with_backoff_then_surface_as_transient(
     server = Server(*(httpx.Response(500, json={"error": "INTERNAL"}) for _ in range(3)))
     result = await build(server, transient_retries=2, sleep=sleeps).extract(make_input())
     assert isinstance(result, ExtractionRejection)
-    assert result.kind is RejectionKind.TRANSIENT
+    assert result.kind is RejectionKind.UNAVAILABLE
+    assert not result.rejection_kind.penalizes_offer
     assert sleeps.calls == [2.0, 6.0]
 
 

@@ -17,6 +17,7 @@ from scrappy.application.ports.extraction_backends import ExtractionProfiles
 from scrappy.application.ports.system import Clock
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
 from scrappy.application.use_cases.analytics import QueryUseCases
+from scrappy.application.use_cases.benchmarks import ImportBenchmarks, ListComponents
 from scrappy.application.use_cases.extraction import (
     ExtractionStatus,
     ForceReextract,
@@ -72,6 +73,10 @@ class Services(Protocol):
         """Where the profiles come from (extraction.yaml path or the settings fallback)."""
         ...
 
+    @property
+    def import_benchmarks(self) -> ImportBenchmarks: ...
+    @property
+    def list_components(self) -> ListComponents: ...
     @property
     def log_level(self) -> str: ...
     @property

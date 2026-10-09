@@ -41,6 +41,12 @@ _JSON_TYPES: Mapping[AttributeType, str] = {
 }
 
 
+EMPTY_ATTRIBUTES_MESSAGE = (
+    "every attribute of '{category}' is null; extract what the offer states, "
+    "or answer category 'other' if it is not a {category}"
+)
+
+
 class InvalidAnswerError(Exception):
     """The model output does not satisfy the schema. The message is safe to show the model."""
 
@@ -128,6 +134,7 @@ class ExtractionSchema:
         * ``other`` carries no attributes, whatever the model wrote.
         * Unknown attribute keys are dropped; missing ones mean "not stated".
         * Values must pass the domain's ``AttributeSpec.coerce`` (``null`` is always allowed).
+        * A real category with every attribute null is invalid (nothing was extracted).
         """
         if not isinstance(parsed, dict):
             raise InvalidAnswerError("the answer must be a JSON object")
@@ -165,6 +172,8 @@ class ExtractionSchema:
                 problems.append(f"attributes.{spec.name}: {error}")
         if problems:
             raise InvalidAnswerError("; ".join(problems))
+        if category.attributes and all(value is None for value in kept.values()):
+            raise InvalidAnswerError(EMPTY_ATTRIBUTES_MESSAGE.format(category=category.name))
         return ValidAnswer(category.name, kept, notes)
 
     def _resolve(self, raw: str) -> Category | None:

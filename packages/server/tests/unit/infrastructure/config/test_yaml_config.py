@@ -23,7 +23,16 @@ def test_shipped_categories_load() -> None:
     catalog = load_categories(CONFIG_DIR / "categories.yaml")
     laptop = catalog.get(CategoryName("laptop"))
     assert laptop is not None
-    assert laptop.version == 1
+    assert laptop.version == 2
+    for name in ("vram_gb", "refresh_hz", "resolution", "battery_wh", "battery_note", "max_ram_gb"):
+        assert laptop.attribute(name) is not None, name
+    upgradeable = laptop.attribute("ram_upgradeable")
+    assert upgradeable is not None
+    assert upgradeable.type is AttributeType.BOOLEAN
+    screen = laptop.attribute("screen_in")
+    assert screen is not None
+    assert screen.description is not None
+    assert "refresh" in screen.description
     storage = laptop.attribute("storage_type")
     assert storage is not None
     assert storage.type is AttributeType.ENUM

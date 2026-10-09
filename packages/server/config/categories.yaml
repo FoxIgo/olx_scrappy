@@ -4,13 +4,33 @@
 # Attribute: {type: string|integer|number|boolean|enum, description?, values? (enum only)}
 # 'other' is reserved (offers that fit no category).
 laptop:
-  version: 1
+  version: 2
   description: "A laptop or notebook computer (not a charger, bag, spare part or desktop PC)"
   attributes:
-    gpu:          {type: string, description: "GPU model, e.g. GTX 1650"}
-    cpu:          {type: string}
-    ram_gb:       {type: integer}
-    storage_gb:   {type: integer}
+    gpu:
+      type: string
+      description: "GPU model name only, normalized, e.g. 'RTX 3050 Ti', 'GTX 1650', 'RX 6600M'. No memory size (that goes to vram_gb) and no 'GeForce' / 'Laptop GPU' / 'NVIDIA' fluff. For integrated graphics name them if stated, e.g. 'Intel Iris Xe', 'Radeon 680M'. Null if not stated."
+    cpu:
+      type: string
+      description: "CPU model only, e.g. 'i5-12450H', 'Ryzen 7 5800H', 'M1'. No brand words or clock speed. Null if not stated."
+    ram_gb:       {type: integer, description: "Installed RAM in GB"}
+    storage_gb:   {type: integer, description: "Total storage capacity in GB (1 TB = 1000)"}
     storage_type: {type: enum, values: [ssd, hdd, emmc]}
-    screen_in:    {type: number}
-    condition:    {type: enum, values: [new, used, damaged, for_parts]}
+    screen_in:
+      type: number
+      description: "Screen diagonal in inches, typically between 10 and 18 (e.g. 15.6). NEVER the refresh rate: '144hz' is not 14.4 inches. Null if the diagonal is not stated."
+    vram_gb:      {type: integer, description: "Dedicated video memory (VRAM) of the GPU in GB, e.g. 4 for 'RTX 3050 Ti 4GB'. Null if not stated or integrated graphics."}
+    refresh_hz:   {type: integer, description: "Screen refresh rate in Hz, e.g. 60, 120, 144, 165"}
+    resolution:
+      type: string
+      description: "Screen resolution as WIDTHxHEIGHT, e.g. '1920x1080'. 'FHD' / 'Full HD' = 1920x1080, 'QHD' / '2K' = 2560x1440, '4K' / 'UHD' = 3840x2160, 'HD' = 1366x768, 'WUXGA' = 1920x1200."
+    battery_wh:   {type: number, description: "Battery capacity in Wh, only when explicitly stated"}
+    battery_note:
+      type: string
+      description: "Short note on battery health or runtime as stated by the seller, e.g. 'holds 3h', 'needs replacement'. Null if not mentioned."
+    ram_upgradeable: {type: boolean, description: "True if the RAM can be upgraded (slot / SO-DIMM), false if soldered. Null if not stated."}
+    max_ram_gb:   {type: integer, description: "Maximum supported RAM in GB, only when stated"}
+    condition:
+      type: enum
+      values: [new, used, damaged, for_parts]
+      description: "new = unused / sealed. used = working used item. damaged = works but has defects (cracked screen 'pęknięta matryca', broken keys, dead battery, 'uszkodzony'). for_parts = not working / sold for parts ('na części', 'nie działa', 'nie włącza się'). The offers are in Polish."

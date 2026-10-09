@@ -470,6 +470,18 @@ async def test_402_blocks_the_profile_without_penalty_and_falls_back() -> None:
     assert len(cheap.calls) == calls  # still blocked: not asked again
 
 
+async def test_an_all_null_extraction_is_a_failed_attempt_not_a_stored_success() -> None:
+    def empty(_: ExtractionInput) -> ExtractionResult:
+        return ExtractionResult(LAPTOP, {"ram_gb": None}, "fake-model", "p1")
+
+    app = App(profiles=profiles_of(make_profile("p", ScriptedExtractor(empty))))
+    await seeded(app, 1)
+    report = await app.reconcile()
+    assert report.stored == 0
+    assert not app.store.state.extractions
+    assert all(s.attempts == 1 for s in app.store.state.extraction_states.values())
+
+
 async def test_no_available_profile_parks_nothing_and_reports_it() -> None:
     def unavailable(_: ExtractionInput) -> ExtractionRejection:
         return ExtractionRejection(

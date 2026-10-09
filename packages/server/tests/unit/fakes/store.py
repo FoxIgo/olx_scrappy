@@ -15,7 +15,7 @@ Reference behaviour for adapter authors:
 from __future__ import annotations
 
 import copy
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from types import TracebackType
@@ -24,7 +24,15 @@ from typing import Self
 from scrappy.application.extraction.batch import ExtractionBatch
 from scrappy.application.extraction.profile_status import ProfileStatus
 from scrappy.application.jobs.model import Job, JobId, JobResult, JobStatus, JobType
+from scrappy.application.ports.components import ComponentWithBenchmarks
 from scrappy.application.ports.repositories import BacklogQuery
+from scrappy.domain.component import (
+    Benchmark,
+    Component,
+    ComponentAlias,
+    ComponentKind,
+    component_slug,
+)
 from scrappy.domain.extraction import ExtractionState, OfferExtraction, extraction_due
 from scrappy.domain.offer import Offer, OfferId, OfferSnapshot
 from scrappy.domain.run import ScrapeRun
@@ -52,6 +60,13 @@ class StoreState:
     batches: dict[str, ExtractionBatch] = field(default_factory=dict[str, ExtractionBatch])
     """Insertion order = creation order (dicts keep it)."""
     profile_status: dict[str, ProfileStatus] = field(default_factory=dict[str, ProfileStatus])
+    components: dict[str, Component] = field(default_factory=dict[str, Component])
+    component_aliases: dict[tuple[ComponentKind, str], ComponentAlias] = field(
+        default_factory=dict[tuple[ComponentKind, str], ComponentAlias]
+    )
+    benchmarks: dict[tuple[str, str, str], Benchmark] = field(
+        default_factory=dict[tuple[str, str, str], Benchmark]
+    )
 
 
 class InMemoryStore:
@@ -324,6 +339,57 @@ class InMemoryProfileStatusRepository:
         return [_copy(self._s.profile_status[n]) for n in sorted(self._s.profile_status)]
 
 
+class InMemoryComponentRepository:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def add_missing(self, components: Sequence[Component]) -> int:
+        added = 0
+        for component in components:
+            if component.id not in self._s.components:
+                self._s.components[component.id] = component
+                added += 1
+        return added
+
+    async def add_aliases(self, aliases: Sequence[ComponentAlias]) -> int:
+        added = 0
+        for alias in aliases:
+            key = (alias.kind, alias.alias)
+            if key not in self._s.component_aliases:
+                self._s.component_aliases[key] = alias
+                added += 1
+        return added
+
+    async def save_benchmarks(self, benchmarks: Sequence[Benchmark]) -> None:
+        for benchmark in benchmarks:
+            self._s.benchmarks[(benchmark.component_id, benchmark.source, benchmark.metric)] = (
+                benchmark
+            )
+
+    async def get(self, component_id: str) -> Component | None:
+        return self._s.components.get(component_id)
+
+    async def find(
+        self, *, kind: ComponentKind | None = None, search: str | None = None
+    ) -> list[ComponentWithBenchmarks]:
+        needle = search.lower() if search else None
+        slug_needle = component_slug(search, "gpu") if search else None
+        found: list[ComponentWithBenchmarks] = []
+        for component in self._s.components.values():
+            if kind is not None and component.kind is not kind:
+                continue
+            if (
+                needle
+                and needle not in component.name.lower()
+                and not (slug_needle and slug_needle in component.slug)
+            ):
+                continue
+            scores = tuple(b for b in self._s.benchmarks.values() if b.component_id == component.id)
+            found.append(ComponentWithBenchmarks(component, scores))
+        found.sort(key=lambda c: c.sort_key)
+        return found
+
+
 class InMemoryJobQueue:
     def __init__(self, state: StoreState) -> None:
         self._s = state
@@ -461,6 +527,10 @@ class InMemoryUnitOfWork:
     @property
     def profile_status(self) -> InMemoryProfileStatusRepository:
         return InMemoryProfileStatusRepository(self._working())
+
+    @property
+    def components(self) -> InMemoryComponentRepository:
+        return InMemoryComponentRepository(self._working())
 
     async def __aenter__(self) -> Self:
         if self._state is not None:

@@ -212,8 +212,9 @@ profiles:
     option) is an HTTP 400, so the config loader refuses it for Gemma on that host. Only
     `json_schema` works reliably (the others leak `<thought>` text), and parsing strips a
     leading `<thought>`/`<think>` block and trailing chatter anyway. Gemma often answers
-    500/503 ("high demand"): the adapter retries 5xx twice (2 s, 6 s) before the offer
-    takes a normal backoff failure.
+    500/503 ("high demand"): the adapter retries 5xx twice (2 s, 6 s); if it persists
+    it becomes `UNAVAILABLE` (like timeouts and connection errors): no attempt penalty,
+    the profile is marked unhealthy and the chain moves on (ADR 0011 slice 1).
   - **429 classification** (quota details in the body): `...PerDay...` quotaId ->
     `QUOTA` + `day_exhausted`: the profile is blocked until the next midnight in its
     `quota_timezone` and the chain moves on, no attempt penalty; `...PerMinute...` ->

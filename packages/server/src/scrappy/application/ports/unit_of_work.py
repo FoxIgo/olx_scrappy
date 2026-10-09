@@ -27,6 +27,7 @@ from collections.abc import Callable
 from types import TracebackType
 from typing import Protocol, Self
 
+from scrappy.application.ports.components import ComponentRepository
 from scrappy.application.ports.job_queue import JobQueue
 from scrappy.application.ports.repositories import (
     ExtractionBatchRepository,
@@ -59,6 +60,8 @@ class UnitOfWork(Protocol):
     def extraction_batches(self) -> ExtractionBatchRepository: ...
     @property
     def profile_status(self) -> ProfileStatusRepository: ...
+    @property
+    def components(self) -> ComponentRepository: ...
 
     async def __aenter__(self) -> Self: ...
 

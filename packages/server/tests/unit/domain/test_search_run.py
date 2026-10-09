@@ -31,7 +31,7 @@ def extraction(category: object = LAPTOP) -> OfferExtraction:
     return OfferExtraction.validated(
         offer_id=offer.id,
         category=category,  # type: ignore[arg-type]
-        raw_attributes={},
+        raw_attributes={"ram_gb": 16} if category == LAPTOP else {},
         catalog=catalog(),
         model="m",
         prompt_version="p",

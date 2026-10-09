@@ -8,6 +8,7 @@ from typing import Self
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from scrappy.infrastructure.persistence.component_repositories import SqlComponentRepository
 from scrappy.infrastructure.persistence.extraction_repositories import (
     SqlExtractionBatchRepository,
     SqlExtractionStateRepository,
@@ -79,6 +80,10 @@ class SqlUnitOfWork:
     @property
     def profile_status(self) -> SqlProfileStatusRepository:
         return SqlProfileStatusRepository(self._connection())
+
+    @property
+    def components(self) -> SqlComponentRepository:
+        return SqlComponentRepository(self._connection())
 
     async def __aenter__(self) -> Self:
         if self._entered:

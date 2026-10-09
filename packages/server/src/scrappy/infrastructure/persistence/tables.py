@@ -32,6 +32,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Float,
     ForeignKeyConstraint,
     Index,
     Integer,
@@ -39,6 +40,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
     false,
 )
 from sqlalchemy.engine import Dialect
@@ -299,4 +301,41 @@ extraction_profile_status = Table(
     Column("usage_day", String(10)),
     Column("requests_today", Integer, nullable=False),
     Column("updated_at", UtcDateTime, nullable=False),
+)
+
+components = Table(
+    "components",
+    metadata,
+    Column("id", String(160), primary_key=True),
+    Column("kind", String(8), nullable=False),
+    Column("slug", String(150), nullable=False),
+    Column("name", Text, nullable=False),
+    Column("vendor", String(32)),
+    Column("family", String(64)),
+    Column("generation", String(16)),
+    Column("segment", String(16), nullable=False),
+    UniqueConstraint("kind", "slug", name="uq_components_kind_slug"),
+    Index("ix_components_kind", "kind"),
+)
+
+component_aliases = Table(
+    "component_aliases",
+    metadata,
+    Column("kind", String(8), primary_key=True),
+    Column("alias", String(200), primary_key=True),
+    Column("component_id", String(160), nullable=False),
+    _fk(["component_id"], "components", ["id"]),
+    Index("ix_component_aliases_component_id", "component_id"),
+)
+
+component_benchmarks = Table(
+    "component_benchmarks",
+    metadata,
+    Column("component_id", String(160), primary_key=True),
+    Column("source", String(64), primary_key=True),
+    Column("metric", String(64), primary_key=True),
+    Column("score", Float, nullable=False),
+    Column("samples", Integer, nullable=False),
+    Column("fetched_at", UtcDateTime, nullable=False),
+    _fk(["component_id"], "components", ["id"]),
 )
