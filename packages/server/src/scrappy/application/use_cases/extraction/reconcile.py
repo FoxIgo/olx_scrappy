@@ -23,7 +23,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from scrappy.application.extraction.batch import BatchItem, BatchStatus, ExtractionBatch
 from scrappy.application.extraction.ingest import (
@@ -33,7 +33,7 @@ from scrappy.application.extraction.ingest import (
     ingest_outcome,
 )
 from scrappy.application.extraction.prepare import prepare_extraction_input
-from scrappy.application.extraction.profile_status import ProfileStatus
+from scrappy.application.extraction.profile_status import ProfileStatus, next_reset
 from scrappy.application.policy import ExtractionPolicy
 from scrappy.application.ports.extraction_backends import (
     BatchBackendError,
@@ -147,9 +147,11 @@ class ReconcileExtractions:
         profile: str | None = None,
         flush: bool = False,
         stop: asyncio.Event | None = None,
+        limit: int | None = None,
     ) -> ReconcileReport:
         """One tick. ``flush`` submits a batch even below ``batch.min_size``
-        (``scrappy extract --inline``)."""
+        (``scrappy extract --inline``). ``limit`` caps how many offers this tick claims
+        in total, across profiles (``scrappy extract --inline --max N``)."""
         report = ReconcileReport()
         catalog = await self._categories.catalog()
         await self.submit_queued(report, catalog)
@@ -168,7 +170,7 @@ class ReconcileExtractions:
                 report.note(f"profile {name} unavailable: {availability.reason}")
                 continue
             try:
-                await self._work(current, query, report, flush=flush, stop=stop)
+                await self._work(current, query, report, flush=flush, stop=stop, limit=limit)
             except _ProfileUnusable as error:
                 report.note(f"profile {name} stopped: {error}")
                 continue
@@ -190,7 +192,7 @@ class ReconcileExtractions:
                     report.note(f"forced work pinned to {name} waits: profile unavailable")
                     continue
                 try:
-                    await self._work(current, query, report, flush=flush, stop=stop)
+                    await self._work(current, query, report, flush=flush, stop=stop, limit=limit)
                 except _ProfileUnusable as error:
                     report.note(f"profile {name} stopped: {error}")
         return report
@@ -240,7 +242,11 @@ class ReconcileExtractions:
         *,
         flush: bool,
         stop: asyncio.Event | None,
+        limit: int | None = None,
     ) -> None:
+        cap = None if limit is None else limit - report.processed
+        if cap is not None and cap <= 0:
+            return
         backlog = await self._count(query)
         now = self._clock.now()
         if report.profile is None:
@@ -250,7 +256,7 @@ class ReconcileExtractions:
         waited = now - since >= profile.batch.max_wait
         if profile.wants_batch(backlog, waited_long=waited, flush=flush):
             report.mode = report.mode or "batch"
-            await self._submit_new_batches(profile, query, report, backlog)
+            await self._submit_new_batches(profile, query, report, backlog, cap)
         elif profile.batch_backend is not None and profile.mode is ExtractionMode.BATCH:
             report.note(
                 f"profile {profile.name}: {backlog} offer(s) wait for a batch "
@@ -258,7 +264,7 @@ class ReconcileExtractions:
             )
         else:
             report.mode = report.mode or "sync"
-            await self._sync(profile, query, report, stop)
+            await self._sync(profile, query, report, stop, cap)
         if await self._count(query) == 0:
             self._backlog_since.pop(profile.name, None)
 
@@ -269,18 +275,26 @@ class ReconcileExtractions:
         query: BacklogQuery,
         report: ReconcileReport,
         stop: asyncio.Event | None,
+        cap: int | None = None,
     ) -> None:
+        total = (
+            self._policy.max_items_per_tick
+            if cap is None
+            else min(cap, self._policy.max_items_per_tick)
+        )
         semaphore = asyncio.Semaphore(profile.capabilities.concurrency)
         chunk = max(2 * profile.capabilities.concurrency, 1)
         pacer = self._pacer(profile)
         processed = 0
-        while processed < self._policy.max_items_per_tick:
+        while processed < total:
             if stop is not None and stop.is_set():
                 report.note("stop requested: remaining backlog left for the next run")
                 return
-            limit = min(chunk, self._policy.max_items_per_tick - processed)
+            limit = min(chunk, total - processed)
             status = await self.selector.status(profile.name)
-            left = status.remaining_today(profile.capabilities.daily_limit, self._clock.now())
+            left = status.remaining_today(
+                profile.capabilities.daily_limit, self._clock.now(), profile.capabilities.quota_tz
+            )
             if left is not None:
                 if left == 0:
                     raise _ProfileUnusable("daily request limit used up")
@@ -380,12 +394,19 @@ class ReconcileExtractions:
         self, uow: UnitOfWork, profile: ExtractionProfile, calls: int, now: datetime
     ) -> None:
         status = await uow.profile_status.get(profile.name) or ProfileStatus.new(profile.name, now)
-        status.count_requests(calls, now)
+        status.count_requests(calls, now, profile.capabilities.quota_tz)
         await uow.profile_status.save(status)
 
     async def _mark_unusable(self, profile: ExtractionProfile, answer: ExtractionRejection) -> None:
         if answer.rejection_kind is RejectionKind.QUOTA:
-            await self.selector.block(profile, answer.reason, self._policy.quota_cooldown)
+            now = self._clock.now()
+            if answer.day_exhausted:  # per-day quota: back at the provider's next midnight
+                cooldown = next_reset(now, profile.capabilities.quota_tz) - now
+            elif answer.retry_after_seconds is not None:  # per-minute quota: short pause
+                cooldown = timedelta(seconds=answer.retry_after_seconds)
+            else:
+                cooldown = self._policy.quota_cooldown
+            await self.selector.block(profile, answer.reason, cooldown)
         else:
             self.selector.mark_unhealthy(profile.name, answer.reason)
 
@@ -403,9 +424,10 @@ class ReconcileExtractions:
         query: BacklogQuery,
         report: ReconcileReport,
         backlog: int,
+        cap: int | None = None,
     ) -> None:
         catalog = query.catalog
-        while backlog > 0:
+        while backlog > 0 and (cap is None or cap > 0):
             now = self._clock.now()
             async with self._uow() as uow:
                 open_batches = await uow.extraction_batches.list_open(profile.name)
@@ -415,9 +437,11 @@ class ReconcileExtractions:
                     f"(max_open {profile.batch.max_open}); waiting"
                 )
                 return
-            limit = profile.batch.max_size
+            limit = profile.batch.max_size if cap is None else min(profile.batch.max_size, cap)
             status = await self.selector.status(profile.name)
-            left = status.remaining_today(profile.capabilities.daily_limit, now)
+            left = status.remaining_today(
+                profile.capabilities.daily_limit, now, profile.capabilities.quota_tz
+            )
             if left is not None:
                 if left == 0:
                     raise _ProfileUnusable("daily request limit used up")
@@ -460,6 +484,8 @@ class ReconcileExtractions:
                     await self._count_requests(uow, profile, len(items), now)
                 await uow.commit()
             backlog -= len(claimed)
+            if cap is not None:
+                cap -= len(claimed)
             await self._submit(batch, profile, catalog, report)
 
     async def submit_queued(self, report: ReconcileReport, catalog: CategoryCatalog) -> None:

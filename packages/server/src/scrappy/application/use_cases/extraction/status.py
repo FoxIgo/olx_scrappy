@@ -121,7 +121,9 @@ class ExtractionStatus:
                 if check_health
                 else None
             )
-            left = status.remaining_today(profile.capabilities.daily_limit, now)
+            left = status.remaining_today(
+                profile.capabilities.daily_limit, now, profile.capabilities.quota_tz
+            )
             views.append(
                 ProfileView(
                     profile=profile,

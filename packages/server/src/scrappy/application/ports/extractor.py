@@ -89,6 +89,10 @@ class ExtractionRejection:
     usage: TokenUsage = field(default_factory=TokenUsage)
     kind: RejectionKind | None = None
     """Defaults from ``retryable``: TRANSIENT if retryable, else INVALID_OUTPUT."""
+    retry_after_seconds: float | None = None
+    """QUOTA only: the provider asked to wait this long (per-minute limit)."""
+    day_exhausted: bool = False
+    """QUOTA only: the provider's per-day quota is used up; blocked until the next reset."""
 
     def __post_init__(self) -> None:
         if self.kind is None:

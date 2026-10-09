@@ -265,7 +265,7 @@ def extraction_view(report: ExtractionStatusReport, *, scoped: bool) -> Json:
                 "blocked": v.blocked,
                 "blocked_until": v.status.blocked_until,
                 "reason": v.status.reason,
-                "requests_today": v.status.requests_on(report.at),
+                "requests_today": v.status.requests_on(report.at, v.profile.capabilities.quota_tz),
                 "daily_limit": v.profile.capabilities.daily_limit,
             }
             for v in report.profiles

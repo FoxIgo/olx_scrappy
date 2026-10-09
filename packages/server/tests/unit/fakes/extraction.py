@@ -78,9 +78,7 @@ class FakeBatchBackend:
         self.polls = 0
 
     # ------------------------------------------------------------------ port
-    async def submit(
-        self, items: Sequence[BatchRequestItem], *, batch_ref: str
-    ) -> SubmittedBatch:
+    async def submit(self, items: Sequence[BatchRequestItem], *, batch_ref: str) -> SubmittedBatch:
         if self.submit_error is not None:
             raise self.submit_error
         provider_id = f"pb{len(self.batches) + 1}"

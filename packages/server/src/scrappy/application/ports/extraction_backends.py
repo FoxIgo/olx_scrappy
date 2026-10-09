@@ -80,10 +80,11 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 from enum import StrEnum
 from typing import Protocol
 
+from scrappy.application.extraction.profile_status import quota_tz
 from scrappy.application.ports.extractor import (
     AttributeExtractor,
     ExtractionInput,
@@ -134,7 +135,9 @@ class ProfileCapabilities:
     rate_limit_per_minute: float | None = None
     """Max sync call starts per minute (free tiers)."""
     daily_limit: int | None = None
-    """Max requests per UTC day; when used up, the profile is unavailable until midnight."""
+    """Max requests per day; when used up, the profile is unavailable until midnight."""
+    quota_timezone: str = "UTC"
+    """IANA timezone whose midnight resets ``daily_limit`` (Google AI Studio: America/Los_Angeles)."""
 
     def __post_init__(self) -> None:
         if self.concurrency < 1:
@@ -143,6 +146,11 @@ class ProfileCapabilities:
             raise InvalidValueError("rate_limit must be > 0")
         if self.daily_limit is not None and self.daily_limit < 1:
             raise InvalidValueError("daily_limit must be >= 1")
+        quota_tz(self.quota_timezone)
+
+    @property
+    def quota_tz(self) -> tzinfo:
+        return quota_tz(self.quota_timezone)
 
 
 @dataclass(frozen=True, slots=True)

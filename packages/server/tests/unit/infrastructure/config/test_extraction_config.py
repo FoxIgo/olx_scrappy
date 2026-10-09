@@ -73,10 +73,13 @@ def test_parse_full_file(tmp_path: Path) -> None:
     config = parse_extraction_config(FULL, path=tmp_path / "x.yaml", settings=settings(tmp_path))
     assert (config.default_profile, config.fallback) == ("local", ("remote",))
     local, remote = config.profiles["local"], config.profiles["remote"]
-    assert local.extra_body == {"options": {"num_ctx": 8192}} and not local.probe
+    assert local.extra_body == {"options": {"num_ctx": 8192}}
+    assert not local.probe
     assert remote.mode is ExtractionMode.AUTO
-    assert remote.rate_limit_per_minute == 15 and remote.daily_limit == 1000
-    assert remote.batch.min_size == 10 and remote.batch.max_wait == timedelta(minutes=5)
+    assert remote.rate_limit_per_minute == 15
+    assert remote.daily_limit == 1000
+    assert remote.batch.min_size == 10
+    assert remote.batch.max_wait == timedelta(minutes=5)
     assert config.policy.reconcile_interval == timedelta(seconds=5)
     assert config.policy.retry.max_attempts == 3
     assert config.policy.description_max_chars == 2000
@@ -92,8 +95,8 @@ def test_rates(value: str | float, per_minute: float) -> None:
 @pytest.mark.parametrize(
     ("change", "message"),
     [
-        ({"default_profile": "nope"}, "unknown profile(s) nope"),
-        ({"fallback": ["ghost"]}, "unknown profile(s) ghost"),
+        ({"default_profile": "nope"}, r"unknown profile\(s\) nope"),
+        ({"fallback": ["ghost"]}, r"unknown profile\(s\) ghost"),
         ({"profiles": {"local": {"provider": "x", "model": "m", "colour": 1}}}, "colour"),
         ({"profiles": {"local": {"provider": "x", "model": "m", "rate_limit": "fast"}}}, "rate"),
         ({"profiles": {"local": {"provider": "x", "model": "m", "mode": "turbo"}}}, "mode"),
@@ -117,7 +120,8 @@ def test_missing_file_derives_the_legacy_openrouter_profile(tmp_path: Path) -> N
     profile = config.profiles["openrouter"]
     assert (profile.provider, profile.model) == ("openrouter", "x/y")
     assert profile.structured_output is StructuredOutput.JSON_OBJECT
-    assert profile.concurrency == 1 and profile.mode is ExtractionMode.SYNC
+    assert profile.concurrency == 1
+    assert profile.mode is ExtractionMode.SYNC
     assert "SCRAPPY_LLM_" in config.source
 
 
@@ -131,7 +135,8 @@ async def test_profiles_are_built_without_network(tmp_path: Path) -> None:
     remote = profiles.get("remote")
     assert isinstance(remote.extractor, UnavailableExtractor)  # no key in the environment
     health = await remote.health.check()
-    assert not health.ok and "OPENROUTER_API_KEY is not set" in health.detail
+    assert not health.ok
+    assert "OPENROUTER_API_KEY is not set" in health.detail
     assert list(profiles.fallback) == ["local", "remote"]
 
     keyed = build_profiles(config, settings(tmp_path, openrouter_api_key="k"))
@@ -169,7 +174,10 @@ def test_unknown_provider_and_missing_base_url_are_config_errors(tmp_path: Path)
     config = parse_extraction_config(raw, path=tmp_path / "x.yaml", settings=settings(tmp_path))
     with pytest.raises(ConfigError, match="unknown provider 'gemini'"):
         build_profiles(config, settings(tmp_path))
-    raw = {"default_profile": "l", "profiles": {"l": {"provider": "openai_compatible", "model": "m"}}}
+    raw = {
+        "default_profile": "l",
+        "profiles": {"l": {"provider": "openai_compatible", "model": "m"}},
+    }
     config = parse_extraction_config(raw, path=tmp_path / "x.yaml", settings=settings(tmp_path))
     with pytest.raises(ConfigError, match="needs base_url"):
         build_profiles(config, settings(tmp_path))
@@ -178,5 +186,8 @@ def test_unknown_provider_and_missing_base_url_are_config_errors(tmp_path: Path)
 def test_the_shipped_example_file_is_valid(tmp_path: Path) -> None:
     data = yaml.safe_load(REPO_CONFIG.read_text(encoding="utf-8"))
     config = parse_extraction_config(data, path=REPO_CONFIG, settings=settings(tmp_path))
-    assert config.default_profile == "openrouter"  # keeps the pre-ADR-0010 behaviour
+    assert config.default_profile == "lmstudio"
+    assert config.fallback == ("lmstudio", "openrouter")
+    assert config.profiles["lmstudio"].extra_body == {"reasoning_effort": "none"}
+    assert "openrouter" in config.profiles  # the paid profile stays available
     build_profiles(config, settings(tmp_path))

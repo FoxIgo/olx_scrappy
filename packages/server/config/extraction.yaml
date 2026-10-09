@@ -8,8 +8,8 @@
 # Secrets never go here: `api_key_env` names an environment variable (or a .env entry).
 # Without this file, one `openrouter` profile is derived from the SCRAPPY_LLM_* settings.
 
-default_profile: openrouter
-fallback: [openrouter]          # e.g. [local, openrouter]: try a local model first
+default_profile: lmstudio
+fallback: [lmstudio, openrouter]   # local model first, paid OpenRouter when LM Studio is down
 
 reconciler:
   interval_seconds: 30          # idle pause between reconcile ticks
@@ -47,14 +47,17 @@ profiles:
   #   # extra_body: {reasoning_effort: none, options: {num_ctx: 8192}}
 
   # LM Studio's OpenAI-compatible server (load the model in LM Studio first).
-  # lmstudio:
-  #   provider: openai_compatible
-  #   base_url: http://localhost:1234/v1
-  #   model: qwen2.5-7b-instruct
-  #   mode: sync
-  #   concurrency: 1
-  #   structured_output: json_schema   # downgraded by `scrappy extract profiles --probe` if rejected
-  #   timeout_seconds: 180
+  # Gemma 4 "thinks" by default: measured 38.6 s and ~1500 output tokens per offer.
+  # With reasoning_effort none: 5.9 s and ~128 tokens. Keep it in extra_body.
+  lmstudio:
+    provider: openai_compatible
+    base_url: http://localhost:1235/v1
+    model: google/gemma-4-12b-qat
+    mode: sync
+    concurrency: 1
+    structured_output: json_schema   # downgraded by `scrappy extract profiles --probe` if rejected
+    temperature: 0
+    extra_body: {reasoning_effort: "none"}
 
   # Google AI Studio free tier (needs the gemini adapter; not available yet).
   # google:

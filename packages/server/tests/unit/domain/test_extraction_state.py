@@ -6,6 +6,7 @@ from datetime import timedelta
 
 import pytest
 
+from scrappy.domain.category import CategoryName
 from scrappy.domain.extraction import (
     ExtractionProvenance,
     ExtractionRetryPolicy,
@@ -15,7 +16,6 @@ from scrappy.domain.extraction import (
     extraction_due,
     needs_extraction,
 )
-from scrappy.domain.category import CategoryName
 from scrappy.domain.offer import ContentHash, Offer
 from scrappy.domain.shared import InvalidValueError
 from tests.unit.builders import T0, at, catalog, details, listing
@@ -113,14 +113,16 @@ class TestExtractionState:
         state = ExtractionState.new(o.id, T0)
         state.lease("sync:w", at(10), T0)
         state.record_failure(self.target(o), "timeout", at(1), self.policy)
-        assert state.lease_owner is None and state.attempts == 1
+        assert state.lease_owner is None
+        assert state.attempts == 1
         assert state.next_attempt_at == at(2)
         assert state.blocks(self.target(o), at(1))
         assert not state.blocks(self.target(o), at(2))
         state.record_failure(self.target(o), "timeout", at(3), self.policy)
         assert state.next_attempt_at == at(5)
         state.record_failure(self.target(o), "bad json", at(6), self.policy)
-        assert state.parked and state.next_attempt_at is None
+        assert state.parked
+        assert state.next_attempt_at is None
         assert state.blocks(self.target(o), at(10_000))
         assert state.last_error == "bad json"
 
@@ -133,7 +135,8 @@ class TestExtractionState:
         changed = ExtractionTarget(ContentHash("e" * 64), catalog().fingerprint, PROMPT)
         assert not state.blocks(changed, at(5))  # content changed: parked no more
         state.record_failure(changed, "y", at(6), self.policy)
-        assert state.attempts == 1 and not state.parked
+        assert state.attempts == 1
+        assert not state.parked
 
     def test_success_and_manual_reset(self) -> None:
         o = offer()
@@ -142,7 +145,9 @@ class TestExtractionState:
         state.reset(at(2), force=True, profile="openrouter")
         assert (state.attempts, state.forced, state.requested_profile) == (0, True, "openrouter")
         state.record_success(at(3))
-        assert not state.forced and state.requested_profile is None and state.target is None
+        assert not state.forced
+        assert state.requested_profile is None
+        assert state.target is None
 
     def test_lease_expires_by_time(self) -> None:
         state = ExtractionState.new(offer().id, T0)

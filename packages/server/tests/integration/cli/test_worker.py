@@ -70,6 +70,18 @@ async def test_extract_until_idle_empties_the_backlog(env: CliEnv) -> None:
         assert (await extract_until_idle(app)).stored == 0
 
 
+async def test_extract_until_idle_stops_at_the_limit(env: CliEnv) -> None:
+    async with await env.container() as app:
+        await start(app)
+        await run_until_idle(app)
+        stats = await extract_until_idle(app, limit=3)
+        assert stats.stored == 3
+        assert await app.extraction_status.backlog() == 1
+        rest = await extract_until_idle(app, limit=3)
+        assert rest.stored == 1
+        assert await app.extraction_status.backlog() == 0
+
+
 async def test_run_worker_runs_both_loops_and_stops_on_request(env: CliEnv) -> None:
     async with await env.container() as app:
         run_id = await start(app)

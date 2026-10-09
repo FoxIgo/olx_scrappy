@@ -87,7 +87,9 @@ class ProfileSelector:
         status = await self.status(name)
         if status.is_blocked(now):
             return Availability(False, f"blocked until {status.blocked_until}: {status.reason}")
-        left = status.remaining_today(profile.capabilities.daily_limit, now)
+        left = status.remaining_today(
+            profile.capabilities.daily_limit, now, profile.capabilities.quota_tz
+        )
         if left == 0:
             return Availability(False, "daily request limit used up")
         health = await self.health(name)

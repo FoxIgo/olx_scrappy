@@ -157,6 +157,22 @@ async def test_sync_results_carry_profile_provenance_and_relevance() -> None:
     assert all(s.lease_owner is None for s in state.extraction_states.values())
 
 
+async def test_limit_caps_the_offers_claimed_in_sync_mode() -> None:
+    app = App()
+    await seeded(app, 5)
+    report = await app.reconcile(limit=3)
+    assert report.stored == 3
+    assert (await app.reconcile(limit=3)).stored == 2
+
+
+async def test_limit_caps_the_offers_claimed_in_a_batch() -> None:
+    app, backend = batch_app()
+    await seeded(app, 5)
+    report = await app.reconcile(flush=True, limit=2)
+    assert report.batches_submitted == 1
+    assert [len(b.items) for b in backend.batches.values()] == [2]
+
+
 # ---------------------------------------------------------------------------- batch mode
 
 
@@ -167,9 +183,12 @@ async def test_batch_happy_path_with_estimated_cost() -> None:
     report = await app.reconcile()
     assert (report.mode, report.batches_submitted) == ("batch", 1)
     (batch,) = app.store.state.batches.values()
-    assert batch.status is BatchStatus.SUBMITTED and batch.provider_batch_id == "pb1"
+    assert batch.status is BatchStatus.SUBMITTED
+    assert batch.provider_batch_id == "pb1"
     assert {item.offer_id for item in batch.items} == set(ids)
-    assert batch.items[0].custom_id == batch_custom_id(batch.items[0].offer_id, batch.items[0].content_hash)
+    assert batch.items[0].custom_id == batch_custom_id(
+        batch.items[0].offer_id, batch.items[0].content_hash
+    )
     assert all(
         s.lease_owner == f"batch:{batch.id}" for s in app.store.state.extraction_states.values()
     )
@@ -183,7 +202,8 @@ async def test_batch_happy_path_with_estimated_cost() -> None:
     assert (polled.completed, polled.stored) == (1, 3)
     state = app.store.state
     done = state.batches[batch.id]
-    assert done.status is BatchStatus.COMPLETED and done.succeeded == 3
+    assert done.status is BatchStatus.COMPLETED
+    assert done.succeeded == 3
     assert done.usage.cost_usd == Decimal("0.003")
     assert all(e.provenance.batch_id == batch.id for e in state.extractions)
     assert all(e.provenance.cost_estimated for e in state.extractions)
@@ -231,7 +251,9 @@ async def test_item_failures_back_off_then_park_and_a_manual_retry_unparks() -> 
     polled = await app.poll()
     assert (polled.stored, polled.item_failures) == (2, 1)
     state = app.store.state.extraction_states[ids[0]]
-    assert state.attempts == 1 and state.next_attempt_at is not None and not state.parked
+    assert state.attempts == 1
+    assert state.next_attempt_at is not None
+    assert not state.parked
     assert await app.backlog() == 0  # in backoff
 
     app.clock.advance(timedelta(minutes=2))
@@ -263,7 +285,8 @@ async def test_a_failed_batch_is_bisected_until_the_bad_item_is_found() -> None:
     state = app.store.state
     assert {e.offer_id for e in state.extractions} == set(ids) - {poison}
     culprit = state.extraction_states[poison]
-    assert culprit.attempts == 1 and culprit.last_error is not None
+    assert culprit.attempts == 1
+    assert culprit.last_error is not None
     assert "invalid request" in culprit.last_error
     failed = [b for b in state.batches.values() if b.status is BatchStatus.FAILED]
     assert [len(b.items) for b in failed] == [4, 2, 1]
@@ -373,7 +396,9 @@ async def test_leases_are_exclusive_and_expire() -> None:
             query, owner="sync:b", lease_until=now + timedelta(minutes=10), limit=5
         )
         await uow.commit()
-    assert len(first) == 1 and len(second) == 1 and set(first + second) == set(ids)
+    assert len(first) == 1
+    assert len(second) == 1
+    assert set(first + second) == set(ids)
     assert await app.backlog() == 0
 
     app.clock.advance(timedelta(minutes=11))  # the owners died: leases expire
@@ -435,7 +460,8 @@ async def test_402_blocks_the_profile_without_penalty_and_falls_back() -> None:
     assert all(s.attempts == 0 for s in app.store.state.extraction_states.values())
     status = await app.extraction_status()
     cheap_view = next(v for v in status.profiles if v.profile.name == "cheap")
-    assert cheap_view.blocked and "402" in (cheap_view.status.reason or "")
+    assert cheap_view.blocked
+    assert "402" in (cheap_view.status.reason or "")
 
     calls = len(cheap.calls)
     await seeded(app, 1, start=10)
@@ -445,25 +471,35 @@ async def test_402_blocks_the_profile_without_penalty_and_falls_back() -> None:
 
 async def test_no_available_profile_parks_nothing_and_reports_it() -> None:
     def unavailable(_: ExtractionInput) -> ExtractionRejection:
-        return ExtractionRejection("connection refused", retryable=True, kind=RejectionKind.UNAVAILABLE)
+        return ExtractionRejection(
+            "connection refused", retryable=True, kind=RejectionKind.UNAVAILABLE
+        )
 
     app = App(profiles=profiles_of(make_profile("local", ScriptedExtractor(unavailable))))
     await seeded(app, 2)
     report = await app.reconcile()
-    assert report.unavailable and report.stored == 0
+    assert report.unavailable
+    assert report.stored == 0
     assert all(s.attempts == 0 for s in app.store.state.extraction_states.values())
     assert await app.backlog() == 2
     again = await app.reconcile()  # marked unhealthy: not even tried until the TTL passes
-    assert again.unavailable and again.processed == 0
+    assert again.unavailable
+    assert again.processed == 0
 
 
 async def test_daily_limit_makes_the_profile_unavailable_until_tomorrow() -> None:
-    app = App(profiles=profiles_of(make_profile("free", ScriptedExtractor(classify_by_title), daily_limit=2)))
+    app = App(
+        profiles=profiles_of(
+            make_profile("free", ScriptedExtractor(classify_by_title), daily_limit=2)
+        )
+    )
     await seeded(app, 3)
     report = await app.reconcile()
-    assert report.stored == 2 and report.unavailable
+    assert report.stored == 2
+    assert report.unavailable
     status = await app.extraction_status()
-    assert status.profiles[0].blocked and status.profiles[0].status.requests_on(app.clock.now()) == 2
+    assert status.profiles[0].blocked
+    assert status.profiles[0].status.requests_on(app.clock.now()) == 2
     app.clock.advance(timedelta(days=1))
     assert (await app.reconcile()).stored == 1
 
@@ -479,7 +515,8 @@ async def test_forced_work_pinned_to_a_profile_is_done_by_that_profile() -> None
     )
     assert result.marked == 2
     await app.extract()
-    assert len(main.calls) == 2 and len(better.calls) == 2
+    assert len(main.calls) == 2
+    assert len(better.calls) == 2
     latest = {
         e.offer_id: e.provenance.profile
         for e in sorted(app.store.state.extractions, key=lambda e: e.provenance.extracted_at)

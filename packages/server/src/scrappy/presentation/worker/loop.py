@@ -51,6 +51,8 @@ class ExtractorStats:
     ticks: int = 0
     stored: int = 0
     failed: int = 0
+    processed: int = 0
+    """Offers claimed and settled by reconcile ticks (stored, failed, released, stale)."""
     batches_submitted: int = 0
     batches_finished: int = 0
     notes: list[str] = field(default_factory=list[str])
@@ -62,6 +64,7 @@ class ExtractorStats:
             self.ticks += 1
             self.stored += report.stored
             self.failed += report.failed
+            self.processed += report.processed
             self.batches_submitted += report.batches_submitted
             self.unavailable = report.unavailable
         else:
@@ -303,12 +306,14 @@ async def extract_until_idle(
     poll_interval: float | None = None,
     stop: asyncio.Event | None = None,
     on_tick: ExtractCallback | None = None,
+    limit: int | None = None,
 ) -> ExtractorStats:
     """``scrappy extract --inline``: process the backlog in-process.
 
     Sync work runs until the backlog is empty (offers in backoff are left for later).
     Batches are submitted even below ``min_size``; with ``wait`` the open batches are
     polled until they finish, without it the call returns once they are submitted.
+    ``limit`` caps how many offers are claimed in total.
     Stops early when no profile is available."""
     stop = stop or asyncio.Event()
     every = (
@@ -319,8 +324,12 @@ async def extract_until_idle(
     stats = ExtractorStats()
     await app.poll_batches(recover=True)
     while not stop.is_set():
+        remaining = None if limit is None else limit - stats.processed
+        if remaining is not None and remaining <= 0:
+            break
         report = await _shielded(
-            app.reconcile_extractions(profile=profile, flush=True, stop=stop), stop
+            app.reconcile_extractions(profile=profile, flush=True, stop=stop, limit=remaining),
+            stop,
         )
         stats.add(report)
         if on_tick:

@@ -119,7 +119,7 @@ def _profiles_table(report: ExtractionStatusReport, *, live: bool) -> Table:
         if view.health is not None and view.health.effective_structured_output is not None:
             output = f"{output} -> {view.health.effective_structured_output.value}"
         rate = "-" if caps.rate_limit_per_minute is None else f"{caps.rate_limit_per_minute:g}/min"
-        today = str(view.status.requests_on(report.at))
+        today = str(view.status.requests_on(report.at, caps.quota_tz))
         if caps.daily_limit is not None:
             today += f"/{caps.daily_limit}"
         if view.health is not None:
@@ -181,6 +181,10 @@ def extract(
         bool,
         typer.Option("--no-wait", help="With batches: return once they are submitted."),
     ] = False,
+    max_offers: Annotated[
+        int | None,
+        typer.Option("--max", min=1, help="With --inline: claim at most this many offers."),
+    ] = None,
 ) -> None:
     """Show the extraction backlog, or process it with --inline."""
     if ctx.invoked_subcommand is not None:
@@ -210,7 +214,7 @@ def extract(
                     status.update(f"Waiting for batches... {report.running} running")
 
             stats = await extract_until_idle(
-                app, profile=profile, wait=not no_wait, on_tick=on_tick
+                app, profile=profile, wait=not no_wait, on_tick=on_tick, limit=max_offers
             )
         console.print(_stats_line(stats))
         for note in stats.notes:
