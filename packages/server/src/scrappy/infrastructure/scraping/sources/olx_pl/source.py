@@ -1,8 +1,12 @@
 """``OlxPlListingSource``: the olx.pl recipe behind the ``ListingSource`` port.
 
 Primary path is the internal JSON API (spike, R16): search items are detail-complete, so
-every observation is DETAILS level and the EnrichOffer stage is skipped. The embedded-state
-HTML parser (``html_state.py``) is a tested fallback and is not used here.
+every observation is DETAILS level and the EnrichOffer stage is skipped.
+
+Category-path search URLs (``/elektronika/komputery/laptopy/q-...``) have no known
+URL -> API mapping, so page 1 is fetched as HTML and parsed from the embedded state
+(``html_state.py``); the state's ``links.next`` is an API URL carrying ``category_id``, the
+query and the filters, and every later page goes through the API path.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ from scrappy.infrastructure.scraping.engines.base import (
 )
 
 from .classifier import Classification, PageKind, classify_api, retry_after_of
+from .html_state import search_result_from_html
 from .mapper import SOURCE_ID, RecordInvalid, map_api_offer, status_from_text
 from .schemas import ApiSearchEnvelope
 from .search_page import ParsedSearchPage, assemble_search_result
@@ -36,13 +41,19 @@ from .urls import (
     DEFAULT_PAGE_SIZE,
     MAX_OFFSET,
     MAX_PAGE_SIZE,
+    CursorKind,
     UnsupportedSearchUrl,
     build_search_request,
+    classify_cursor,
     first_page_ref,
     offer_api_url,
 )
 
 _HEADERS = {"Accept": "application/json", "Accept-Language": "pl-PL,pl;q=0.9"}
+_HTML_HEADERS = {
+    "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pl-PL,pl;q=0.9",
+}
 
 
 class OlxPlListingSource:
@@ -75,8 +86,11 @@ class OlxPlListingSource:
             raise InvalidRequestError(str(exc)) from exc
 
     async def fetch_search_page(self, page: PageRef) -> SearchPageResult:
-        """One API page. Raises ``UnsupportedSearchUrl`` for a cursor that cannot be mapped
-        (a configuration error, not a site failure)."""
+        """One search page: HTML for a category-path cursor, the API otherwise. Raises
+        ``UnsupportedSearchUrl`` for a cursor that cannot be mapped (a configuration error,
+        not a site failure)."""
+        if classify_cursor(page.cursor) is CursorKind.CATEGORY_HTML:
+            return await self._fetch_category_page(page)
         request = build_search_request(page.cursor, self._page_size)
         if request.offset > MAX_OFFSET:
             return SearchPageResult(FetchOutcome.OK, truncated=True)
@@ -115,6 +129,12 @@ class OlxPlListingSource:
             require_price=self._require_price,
             raw_ref=raw.archive_ref,
         )
+
+    async def _fetch_category_page(self, page: PageRef) -> SearchPageResult:
+        raw = await self._get(page.cursor.strip(), _HTML_HEADERS)
+        if isinstance(raw, Classification):
+            return SearchPageResult.failed(raw.fetch_outcome, raw.message)
+        return search_result_from_html(raw, page, require_price=self._require_price)
 
     # ------------------------------------------------------------------ details
 
@@ -163,11 +183,11 @@ class OlxPlListingSource:
 
     # ------------------------------------------------------------------ transport
 
-    async def _get(self, url: str) -> RawPage | Classification:
+    async def _get(self, url: str, headers: dict[str, str] = _HEADERS) -> RawPage | Classification:
         """Fetch; transport errors become TRANSIENT, a raised ``FetchBlocked`` becomes BLOCKED."""
         try:
             raw = await self._fetcher.fetch(
-                FetchRequest(url=url, headers=_HEADERS, timeout=self._timeout)
+                FetchRequest(url=url, headers=headers, timeout=self._timeout)
             )
         except FetchBlocked as exc:
             return Classification(PageKind.BLOCKED, str(exc))

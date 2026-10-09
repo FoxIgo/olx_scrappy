@@ -47,7 +47,7 @@ Categories (`config/categories.yaml`) and sources (`config/sources.yaml`) are re
 
 ```sh
 cd packages/server
-# 1. Save a search (the URL is validated right away; OLX supports /oferty/q-<query>/ URLs)
+# 1. Save a search (the URL is validated right away; OLX supports /oferty/q-<query>/ URLs and category paths such as /elektronika/komputery/laptopy/q-acer-nitro-7/, optionally with ?search[...] filters)
 uv run scrappy search add gtx-laptops "https://www.olx.pl/oferty/q-gtx-1650-laptop/" --category laptop
 uv run scrappy search list
 uv run scrappy search show gtx-laptops

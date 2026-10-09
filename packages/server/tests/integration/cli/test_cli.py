@@ -59,9 +59,9 @@ def test_search_add_rejects_unsupported_url_immediately(env: CliEnv) -> None:
             app, ["search", "add", "olx-phones", url, "-c", "laptop"], obj=context
         )
 
-    bad = add("https://www.olx.pl/elektronika/telefony/")
+    bad = add("https://www.olx.pl/oferty/krakow/")
     assert bad.exit_code == 1
-    assert "unsupported olx.pl search URL" in bad.output
+    assert "region paths are not" in " ".join(bad.output.split())
     assert "Traceback" not in bad.output
     assert "No saved searches" in env.ok("search", "list")
 

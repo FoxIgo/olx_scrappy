@@ -50,9 +50,14 @@ def test_validate_search_url_accepts_supported_url() -> None:
 @pytest.mark.parametrize(
     "url",
     [
-        "https://www.olx.pl/elektronika/komputery/laptopy/",
+        "https://www.allegro.pl/elektronika/komputery/laptopy/",
         "https://www.allegro.pl/oferty/q-laptop/",
         "https://www.olx.pl/oferty/q-laptop/extra/",
+        "https://www.olx.pl/oferty/krakow/",
+        "https://www.olx.pl/d/oferta/x-CID99-IDabc.html",
+        "https://www.olx.pl/a/b/c/d/e/q-x/",
+        "https://www.olx.pl/api/v1/offers/?offset=0",
+        "https://www.olx.pl/",
     ],
 )
 def test_validate_search_url_rejects_unsupported_url(url: str) -> None:
@@ -325,10 +330,10 @@ async def test_garbage_json_is_transient() -> None:
     )
 
 
-async def test_category_url_raises_unsupported() -> None:
+async def test_region_url_raises_unsupported() -> None:
     source, fetcher = make_source(make_page({}))
     with pytest.raises(UnsupportedSearchUrl):
-        await source.fetch_search_page(PageRef.first("https://www.olx.pl/elektronika/q-gtx/"))
+        await source.fetch_search_page(PageRef.first("https://www.olx.pl/oferty/krakow/"))
     assert fetcher.calls == []
 
 

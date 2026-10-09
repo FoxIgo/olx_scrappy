@@ -79,8 +79,9 @@ def test_unknown_params_pass_through_with_warnings() -> None:
         "https://www.olx.pl/",
     ],
 )
-def test_category_and_region_paths_are_unsupported(url: str) -> None:
-    with pytest.raises(UnsupportedSearchUrl, match=r"HTML-state|category"):
+def test_translate_only_handles_oferty_paths(url: str) -> None:
+    """Category paths are not translated to API params (they go through the HTML page)."""
+    with pytest.raises(UnsupportedSearchUrl):
         translate_search_url(url)
 
 
@@ -116,7 +117,7 @@ def test_page_refs() -> None:
     assert nxt == PageRef("https://www.olx.pl/api/v1/offers?offset=40&limit=40", 2)
     assert next_page_ref("https://other.example/api/v1/offers?offset=40", first) is None
     with pytest.raises(UnsupportedSearchUrl):
-        first_page_ref("https://www.olx.pl/elektronika/")
+        first_page_ref("https://www.olx.pl/oferty/krakow/")
 
 
 def test_offer_api_url() -> None:
