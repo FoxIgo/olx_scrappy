@@ -7,12 +7,13 @@ Re-run unchanged against SQLite by ``tests/integration/persistence/test_unit_sui
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
 from scrappy.application.extraction.batch import BatchStatus
+from scrappy.application.extraction.profile_status import ProfileStatus, next_reset, quota_tz
 from scrappy.application.policy import ExtractionPolicy, PipelinePolicy
 from scrappy.application.ports.extraction_backends import (
     BatchBackendError,
@@ -583,3 +584,97 @@ def _hash(app: App, offer_id: OfferId):  # type: ignore[no-untyped-def]
     content_hash = app.store.state.offers[offer_id].content_hash
     assert content_hash is not None
     return content_hash
+
+
+# ---------------------------------------------------------------- quota day / Pacific reset
+LA = "America/Los_Angeles"
+
+
+async def test_daily_limit_resets_at_midnight_in_the_profile_timezone() -> None:
+    app = App(
+        profiles=profiles_of(
+            make_profile(
+                "g", ScriptedExtractor(classify_by_title), daily_limit=2, quota_timezone=LA
+            )
+        )
+    )
+    app.clock.current = datetime(2026, 10, 2, 6, 40, tzinfo=UTC)  # 23:40 Pacific (PDT)
+    await seeded(app, 3)
+    assert (await app.reconcile()).stored == 2
+    app.clock.current = datetime(2026, 10, 2, 6, 59, tzinfo=UTC)  # 23:59 Pacific: same day
+    assert (await app.reconcile()).stored == 0
+    app.clock.current = datetime(2026, 10, 2, 7, 1, tzinfo=UTC)  # 00:01 Pacific: new day
+    assert (await app.reconcile()).stored == 1
+
+
+def test_next_reset_follows_the_timezone_including_dst() -> None:
+    pacific = quota_tz(LA)
+    summer = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
+    assert next_reset(summer, pacific) == datetime(2026, 10, 2, 7, 0, tzinfo=UTC)  # PDT
+    winter = datetime(2026, 12, 1, 12, 0, tzinfo=UTC)
+    assert next_reset(winter, pacific) == datetime(2026, 12, 2, 8, 0, tzinfo=UTC)  # PST
+    assert next_reset(summer) == datetime(2026, 10, 2, 0, 0, tzinfo=UTC)
+    status = ProfileStatus.new("g", summer)
+    status.count_requests(5, summer, pacific)
+    assert status.requests_on(datetime(2026, 10, 2, 6, 59, tzinfo=UTC), pacific) == 5
+    assert status.requests_on(datetime(2026, 10, 2, 7, 0, tzinfo=UTC), pacific) == 0
+    with pytest.raises(InvalidValueError):
+        quota_tz("Mars/Olympus")
+
+
+def quota_rejection(**kwargs: object) -> ScriptedExtractor:
+    def script(_: ExtractionInput) -> ExtractionRejection:
+        return ExtractionRejection(
+            "HTTP 429: RESOURCE_EXHAUSTED",
+            retryable=True,
+            kind=RejectionKind.QUOTA,
+            **kwargs,  # type: ignore[arg-type]
+        )
+
+    return ScriptedExtractor(script)
+
+
+async def test_per_day_quota_blocks_until_the_next_reset_and_falls_through_to_the_next() -> None:
+    first = quota_rejection(day_exhausted=True)
+    second = ScriptedExtractor(classify_by_title)
+    app = App(
+        profiles=profiles_of(
+            make_profile("lite", first, quota_timezone=LA),
+            make_profile("gemma", second, quota_timezone=LA),
+            fallback=["lite", "gemma"],
+        )
+    )
+    await seeded(app, 3)
+    report = await app.reconcile()
+    assert report.stored == 3
+    assert {e.provenance.profile for e in app.store.state.extractions} == {"gemma"}
+    assert all(s.attempts == 0 for s in app.store.state.extraction_states.values())  # no penalty
+    status = await app.extraction_status()
+    lite = next(v for v in status.profiles if v.profile.name == "lite")
+    assert lite.blocked
+    assert lite.status.blocked_until == datetime(2026, 10, 2, 7, 0, tzinfo=UTC)
+    assert "RESOURCE_EXHAUSTED" in (lite.status.reason or "")
+    calls = len(first.calls)
+    await seeded(app, 1, start=10)
+    await app.reconcile()
+    assert len(first.calls) == calls  # not asked again before the reset
+    app.clock.current = datetime(2026, 10, 2, 7, 1, tzinfo=UTC)
+    await seeded(app, 1, start=20)
+    await app.reconcile()
+    assert len(first.calls) > calls  # tried again after the Pacific midnight
+
+
+async def test_per_minute_quota_pauses_the_profile_only_for_the_retry_delay() -> None:
+    first = quota_rejection(retry_after_seconds=45.0)
+    second = ScriptedExtractor(classify_by_title)
+    app = App(
+        profiles=profiles_of(
+            make_profile("lite", first), make_profile("gemma", second), fallback=["lite", "gemma"]
+        )
+    )
+    await seeded(app, 2)
+    assert (await app.reconcile()).stored == 2
+    status = await app.extraction_status()
+    lite = next(v for v in status.profiles if v.profile.name == "lite")
+    assert lite.status.blocked_until == app.clock.now() + timedelta(seconds=45)
+    assert all(s.attempts == 0 for s in app.store.state.extraction_states.values())

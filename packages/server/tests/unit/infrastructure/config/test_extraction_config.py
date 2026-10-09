@@ -186,8 +186,69 @@ def test_unknown_provider_and_missing_base_url_are_config_errors(tmp_path: Path)
 def test_the_shipped_example_file_is_valid(tmp_path: Path) -> None:
     data = yaml.safe_load(REPO_CONFIG.read_text(encoding="utf-8"))
     config = parse_extraction_config(data, path=REPO_CONFIG, settings=settings(tmp_path))
-    assert config.default_profile == "lmstudio"
-    assert config.fallback == ("lmstudio", "openrouter")
+    assert config.default_profile == "gemini-lite"
+    assert config.fallback == ("gemini-lite", "gemini-lite-31", "gemma-31b", "gemma-26b")
     assert config.profiles["lmstudio"].extra_body == {"reasoning_effort": "none"}
-    assert "openrouter" in config.profiles  # the paid profile stays available
+    # lmstudio (slow) and openrouter (paid) are defined but not in the chain
+    assert {"lmstudio", "openrouter"} <= set(config.profiles) - set(config.fallback)
+    models = {n: config.profiles[n].model for n in config.fallback}
+    assert models == {
+        "gemini-lite": "gemini-3.5-flash-lite",
+        "gemini-lite-31": "gemini-3.1-flash-lite",
+        "gemma-31b": "gemma-4-31b-it",
+        "gemma-26b": "gemma-4-26b-a4b-it",
+    }
+    for name in config.fallback:
+        profile = config.profiles[name]
+        assert profile.provider == "openai_compatible"
+        assert profile.api_key_env == "GOOGLE_API_KEY"
+        assert profile.base_url == "https://generativelanguage.googleapis.com/v1beta/openai"
+        assert profile.structured_output is StructuredOutput.JSON_SCHEMA
+        assert profile.quota_timezone == "America/Los_Angeles"
+        assert profile.rate_limit_per_minute is not None
+        assert profile.daily_limit is not None
+        if name.startswith("gemma"):
+            assert profile.extra_body == {}  # thinking cannot be switched off on Google
+            assert profile.concurrency >= 6
+    assert (config.profiles["gemini-lite"].daily_limit or 10**9) < 500
+    assert (config.profiles["gemma-31b"].daily_limit or 10**9) < 14_400
     build_profiles(config, settings(tmp_path))
+
+
+def _google_gemma(**extra: object) -> dict[str, object]:
+    profile: dict[str, object] = {
+        "provider": "openai_compatible",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "model": "gemma-4-31b-it",
+        **extra,
+    }
+    return {"default_profile": "g", "profiles": {"g": profile}}
+
+
+@pytest.mark.parametrize("key", ["reasoning_effort", "thinking_config"])
+def test_thinking_options_are_refused_for_gemma_on_google(tmp_path: Path, key: str) -> None:
+    raw = _google_gemma(extra_body={key: "none"})
+    with pytest.raises(ConfigError, match="cannot be disabled"):
+        parse_extraction_config(raw, path=tmp_path / "x.yaml", settings=settings(tmp_path))
+
+
+def test_quota_timezone_defaults_to_utc_and_must_be_known(tmp_path: Path) -> None:
+    ok = parse_extraction_config(
+        _google_gemma(), path=tmp_path / "x.yaml", settings=settings(tmp_path)
+    )
+    assert ok.profiles["g"].quota_timezone == "UTC"
+    with pytest.raises(ConfigError, match="unknown quota timezone"):
+        parse_extraction_config(
+            _google_gemma(quota_timezone="Mars/Olympus"),
+            path=tmp_path / "x.yaml",
+            settings=settings(tmp_path),
+        )
+    profile = build_profile(
+        parse_extraction_config(
+            _google_gemma(quota_timezone="America/Los_Angeles"),
+            path=tmp_path / "x.yaml",
+            settings=settings(tmp_path),
+        ).profiles["g"],
+        settings(tmp_path),
+    )
+    assert profile.capabilities.quota_timezone == "America/Los_Angeles"

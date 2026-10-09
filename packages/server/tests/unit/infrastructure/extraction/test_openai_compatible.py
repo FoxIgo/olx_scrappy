@@ -13,7 +13,12 @@ from scrappy.application.ports.extractor import (
     ExtractionResult,
     RejectionKind,
 )
-from scrappy.infrastructure.extraction.openai_compatible import NO_KEY, OpenAICompatibleExtractor
+from scrappy.infrastructure.extraction.openai_compatible import (
+    DEFAULT_RATE_WAIT,
+    NO_KEY,
+    OpenAICompatibleExtractor,
+    parse_json,
+)
 
 from .conftest import make_input
 from .test_openrouter import LAPTOP_JSON, completion
@@ -275,3 +280,129 @@ async def test_probe_keeps_the_level_on_transport_failure() -> None:
     server = Server(models(MODEL), httpx.ConnectError("down"))
     health = await build(server).check(probe=True)
     assert health.effective_structured_output is StructuredOutput.JSON_SCHEMA
+
+
+# ---------------------------------------------------------------- Google AI Studio
+QUOTA_METRIC = "generativelanguage.googleapis.com/generate_content_free_tier_requests"
+
+
+def google_429(quota_id: str, retry_delay: str | None = "7s") -> httpx.Response:
+    details: list[dict[str, Any]] = [
+        {
+            "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+            "violations": [
+                {
+                    "quotaMetric": QUOTA_METRIC,
+                    "quotaId": quota_id,
+                    "quotaDimensions": {"location": "global", "model": "gemini-3.5-flash-lite"},
+                    "quotaValue": "500",
+                }
+            ],
+        }
+    ]
+    if retry_delay:
+        details.append(
+            {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": retry_delay}
+        )
+    error = {
+        "code": 429,
+        "message": "You exceeded your current quota, please check your plan and billing details.",
+        "status": "RESOURCE_EXHAUSTED",
+        "details": details,
+    }
+    return httpx.Response(429, json=[{"error": error}])  # Google wraps the error in a list
+
+
+DAY = "GenerateRequestsPerDayPerProjectPerModel-FreeTier"
+MINUTE = "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"
+
+
+class Sleeps:
+    def __init__(self) -> None:
+        self.calls: list[float] = []
+
+    async def __call__(self, seconds: float) -> None:
+        self.calls.append(seconds)
+
+
+async def test_google_per_day_429_is_a_quota_rejection_without_waiting() -> None:
+    sleeps = Sleeps()
+    server = Server(google_429(DAY, "30s"))
+    result = await build(server, rate_limit_waits=2, sleep=sleeps).extract(make_input())
+    assert isinstance(result, ExtractionRejection)
+    assert result.kind is RejectionKind.QUOTA
+    assert result.day_exhausted
+    assert result.retry_after_seconds is None
+    assert not result.rejection_kind.penalizes_offer
+    assert sleeps.calls == []
+    assert len(server.requests) == 1
+
+
+async def test_google_per_minute_429_waits_the_retry_delay_and_retries() -> None:
+    sleeps = Sleeps()
+    server = Server(google_429(MINUTE, "7s"), completion(LAPTOP_JSON))
+    result = await build(server, rate_limit_waits=2, sleep=sleeps).extract(make_input())
+    assert isinstance(result, ExtractionResult)
+    assert sleeps.calls == [8.0]  # retryDelay + 1 s margin
+
+
+async def test_google_per_minute_429_that_persists_pauses_the_profile_without_penalty() -> None:
+    sleeps = Sleeps()
+    server = Server(*(google_429(MINUTE, "7s") for _ in range(3)))
+    result = await build(server, rate_limit_waits=2, sleep=sleeps).extract(make_input())
+    assert isinstance(result, ExtractionRejection)
+    assert result.kind is RejectionKind.QUOTA
+    assert not result.day_exhausted
+    assert result.retry_after_seconds == 7.0
+    assert sleeps.calls == [8.0, 8.0]
+
+
+async def test_a_retry_delay_beyond_the_wait_cap_is_not_waited_for() -> None:
+    sleeps = Sleeps()
+    server = Server(google_429(MINUTE, "600s"))
+    result = await build(server, rate_limit_waits=2, sleep=sleeps).extract(make_input())
+    assert isinstance(result, ExtractionRejection)
+    assert result.retry_after_seconds == 600.0
+    assert sleeps.calls == []
+
+
+async def test_a_429_without_retry_info_gets_a_default_pause() -> None:
+    server = Server(google_429(MINUTE, None))
+    result = await build(server).extract(make_input())
+    assert isinstance(result, ExtractionRejection)
+    assert result.kind is RejectionKind.QUOTA
+    assert result.retry_after_seconds == DEFAULT_RATE_WAIT
+
+
+async def test_server_errors_are_retried_with_backoff_then_surface_as_transient() -> None:
+    unavailable = httpx.Response(
+        503, json={"error": {"code": 503, "message": "high demand", "status": "UNAVAILABLE"}}
+    )
+    sleeps = Sleeps()
+    server = Server(unavailable, completion(LAPTOP_JSON))
+    result = await build(server, transient_retries=2, sleep=sleeps).extract(make_input())
+    assert isinstance(result, ExtractionResult)
+    assert sleeps.calls == [2.0]
+
+    sleeps = Sleeps()
+    server = Server(*(httpx.Response(500, json={"error": "INTERNAL"}) for _ in range(3)))
+    result = await build(server, transient_retries=2, sleep=sleeps).extract(make_input())
+    assert isinstance(result, ExtractionRejection)
+    assert result.kind is RejectionKind.TRANSIENT
+    assert sleeps.calls == [2.0, 6.0]
+
+
+async def test_a_thought_block_before_the_json_is_stripped() -> None:
+    leaked = "<thought>The user wants a laptop.\nLet me think {not json}</thought>\n" + LAPTOP_JSON
+    result = await build(Server(completion(leaked))).extract(make_input())
+    assert isinstance(result, ExtractionResult)
+    assert parse_json('<think>a</think><thought>b</thought>```json\n{"a": 1}\n```') == {"a": 1}
+
+
+async def test_the_health_check_accepts_googles_models_prefix() -> None:
+    health = await build(Server(models(f"models/{MODEL}", "models/other"))).check()
+    assert health.ok
+
+
+def test_trailing_text_after_the_json_value_is_ignored() -> None:
+    assert parse_json('{"a": 1}' + chr(10) * 2 + 'Hope this helps! {"b": 2}') == {"a": 1}

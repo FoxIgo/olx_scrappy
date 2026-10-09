@@ -137,7 +137,7 @@ class ProfileCapabilities:
     daily_limit: int | None = None
     """Max requests per day; when used up, the profile is unavailable until midnight."""
     quota_timezone: str = "UTC"
-    """IANA timezone whose midnight resets ``daily_limit`` (Google AI Studio: America/Los_Angeles)."""
+    """IANA timezone whose midnight resets ``daily_limit`` (Google: America/Los_Angeles)."""
 
     def __post_init__(self) -> None:
         if self.concurrency < 1:

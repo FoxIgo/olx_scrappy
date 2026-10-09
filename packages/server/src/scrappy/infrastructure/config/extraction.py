@@ -26,7 +26,8 @@ Format::
         structured_output: json_schema  # json_schema | json_object | prompt_only
         concurrency: 1
         rate_limit: 15/min            # N/min, N/s, N/h or a number (per minute)
-        daily_limit: 1000             # requests per UTC day
+        daily_limit: 1000             # requests per day (quota_timezone midnight resets it)
+        quota_timezone: UTC           # IANA name, e.g. America/Los_Angeles for Google AI Studio
         timeout_seconds: 120
         temperature: 0
         headers: {}
@@ -47,6 +48,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from scrappy.application.extraction.profile_status import quota_tz
 from scrappy.application.policy import ExtractionPolicy
 from scrappy.application.ports.extraction_backends import (
     BatchSettings,
@@ -101,12 +103,22 @@ class _ProfileModel(BaseModel):
     concurrency: int = Field(default=1, ge=1)
     rate_limit: str | float | None = None
     daily_limit: int | None = Field(default=None, ge=1)
+    quota_timezone: str = "UTC"
     timeout_seconds: float = Field(default=60, gt=0)
     temperature: float = Field(default=0, ge=0)
     headers: dict[str, str] = Field(default_factory=dict[str, str])
     extra_body: dict[str, Any] = Field(default_factory=dict[str, Any])
     probe: bool = True
     batch: _BatchModel = Field(default_factory=_BatchModel)
+
+    @field_validator("quota_timezone")
+    @classmethod
+    def _timezone(cls, value: str) -> str:
+        try:
+            quota_tz(value)
+        except InvalidValueError as error:
+            raise ValueError(str(error)) from error
+        return value
 
     @field_validator("rate_limit")
     @classmethod
@@ -152,6 +164,7 @@ class ProfileConfig:
     concurrency: int = 1
     rate_limit_per_minute: float | None = None
     daily_limit: int | None = None
+    quota_timezone: str = "UTC"
     timeout_seconds: float = 60.0
     temperature: float = 0.0
     headers: dict[str, str] = field(default_factory=dict[str, str])
@@ -215,6 +228,7 @@ def parse_extraction_config(data: object, *, path: Path, settings: Settings) -> 
             )
         except InvalidValueError as error:
             raise ConfigError(f"{path.name} ({path}): profiles.{name}.{error}") from error
+        _reject_google_thinking_options(path, name, raw)
         profiles[name] = ProfileConfig(
             name=name,
             provider=raw.provider,
@@ -226,6 +240,7 @@ def parse_extraction_config(data: object, *, path: Path, settings: Settings) -> 
             concurrency=raw.concurrency,
             rate_limit_per_minute=parse_rate(raw.rate_limit),
             daily_limit=raw.daily_limit,
+            quota_timezone=raw.quota_timezone,
             timeout_seconds=raw.timeout_seconds,
             temperature=raw.temperature,
             headers=dict(raw.headers),
@@ -240,6 +255,23 @@ def parse_extraction_config(data: object, *, path: Path, settings: Settings) -> 
         policy=_policy(model.reconciler, settings),
         source=str(path),
     )
+
+
+_THINKING_KEYS = ("reasoning_effort", "reasoning", "thinking", "thinking_config", "thinking_budget")
+
+
+def _reject_google_thinking_options(path: Path, name: str, raw: _ProfileModel) -> None:
+    """Gemma on Google AI Studio answers HTTP 400 to any thinking option (it cannot be off)."""
+    if "generativelanguage.googleapis.com" not in (raw.base_url or ""):
+        return
+    if not (raw.model or "").lower().startswith("gemma"):
+        return
+    bad = [key for key in _THINKING_KEYS if key in raw.extra_body]
+    if bad:
+        raise ConfigError(
+            f"{path.name} ({path}): profiles.{name}.extra_body: {', '.join(bad)} is rejected by "
+            "Gemma on Google AI Studio (thinking cannot be disabled); remove it"
+        )
 
 
 LEGACY_PROFILE = "openrouter"

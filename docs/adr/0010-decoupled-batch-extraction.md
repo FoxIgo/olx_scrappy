@@ -196,6 +196,30 @@ profiles:
 - **Health check per profile** at extractor start and on failures: the endpoint is
   reachable, the model is loaded/available, and capabilities match. An unavailable
   profile → next in `fallback`, reported in `q health`.
+- **Google AI Studio free-tier chain (shipped default).** Google's OpenAI-compatible endpoint
+  (`https://generativelanguage.googleapis.com/v1beta/openai`, `provider: openai_compatible`,
+  key `GOOGLE_API_KEY`) needs no separate adapter. Free quotas are **per model**, so several
+  models are several budgets: `fallback: [gemini-lite (gemini-3.5-flash-lite), gemini-lite-31
+  (gemini-3.1-flash-lite), gemma-31b (gemma-4-31b-it), gemma-26b (gemma-4-26b-a4b-it)]`;
+  `lmstudio` (too slow) and the paid `openrouter` are defined but kept out of the chain.
+  - Limits sit slightly below the quotas (RPM/RPD: lite 14/min, 480/day; Gemma 15/min,
+    14000/day). Gemma's 16K TPM (~820 tokens per offer) caps it near 19 offers/min, so
+    its rate limit is 15/min; its ~25 s latency is covered by `concurrency: 8`. There is
+    no TPM limiter; the rate limit stands in for it.
+  - Daily quotas reset at **midnight Pacific time**: profile field `quota_timezone`
+    (IANA name, default `UTC`) decides when `daily_limit` counting resets.
+  - **Gemma thinking cannot be disabled on Google**: `reasoning_effort` (any thinking
+    option) is an HTTP 400, so the config loader refuses it for Gemma on that host. Only
+    `json_schema` works reliably (the others leak `<thought>` text), and parsing strips a
+    leading `<thought>`/`<think>` block and trailing chatter anyway. Gemma often answers
+    500/503 ("high demand"): the adapter retries 5xx twice (2 s, 6 s) before the offer
+    takes a normal backoff failure.
+  - **429 classification** (quota details in the body): `...PerDay...` quotaId ->
+    `QUOTA` + `day_exhausted`: the profile is blocked until the next midnight in its
+    `quota_timezone` and the chain moves on, no attempt penalty; `...PerMinute...` ->
+    the adapter waits `RetryInfo.retryDelay` (<= 90 s, twice), then `QUOTA` with
+    `retry_after_seconds`: the profile is paused that long, still no penalty. A 429
+    without quota details stays `TRANSIENT`.
 - **Provenance** records the profile, provider and model per extraction, so results from
   different models can be compared (`q stats` grouped by model) and selectively redone:
   `scrappy extract --force --profile openrouter --where "model=..."`.

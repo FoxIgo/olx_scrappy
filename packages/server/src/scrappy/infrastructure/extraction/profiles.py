@@ -83,6 +83,8 @@ def _openai_compatible(config: ProfileConfig, settings: Settings) -> SyncAdapter
         temperature=config.temperature,
         extra_body=config.extra_body,
         key_hint=config.api_key_env,
+        transient_retries=2,
+        rate_limit_waits=2,
     )
 
 
@@ -150,6 +152,7 @@ def build_profile(
             concurrency=config.concurrency,
             rate_limit_per_minute=config.rate_limit_per_minute,
             daily_limit=config.daily_limit,
+            quota_timezone=config.quota_timezone,
         ),
         batch=config.batch,
         batch_backend=backend,

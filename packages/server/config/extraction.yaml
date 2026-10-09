@@ -8,8 +8,12 @@
 # Secrets never go here: `api_key_env` names an environment variable (or a .env entry).
 # Without this file, one `openrouter` profile is derived from the SCRAPPY_LLM_* settings.
 
-default_profile: lmstudio
-fallback: [lmstudio, openrouter]   # local model first, paid OpenRouter when LM Studio is down
+default_profile: gemini-lite
+# Google AI Studio free tier: quotas are PER MODEL, so each model below is its own budget and the
+# next one takes over when a model's daily quota is used up. `lmstudio` (local, slow) and
+# `openrouter` (PAID) are defined but deliberately not in the chain: append them manually
+# (e.g. `..., gemma-26b, openrouter`) if you want a paid last resort.
+fallback: [gemini-lite, gemini-lite-31, gemma-31b, gemma-26b]
 
 reconciler:
   interval_seconds: 30          # idle pause between reconcile ticks
@@ -59,11 +63,68 @@ profiles:
     temperature: 0
     extra_body: {reasoning_effort: "none"}
 
-  # Google AI Studio free tier (needs the gemini adapter; not available yet).
-  # google:
-  #   provider: gemini
-  #   model: gemini-2.5-flash-lite
-  #   api_key_env: GEMINI_API_KEY
-  #   mode: sync
-  #   rate_limit: 15/min          # N/min, N/s or N/h
-  #   daily_limit: 1000           # requests per UTC day; then the next fallback profile
+  # Google AI Studio free tier through its OpenAI-compatible endpoint (key: GOOGLE_API_KEY).
+  # Free quotas (RPM / TPM / RPD) per model; limits below sit slightly under them. Daily quotas
+  # reset at midnight Pacific time, hence quota_timezone. A 429 with PerDay quota blocks the
+  # profile until that reset (the chain moves on, offers are not penalised); a PerMinute 429
+  # waits the provider's retryDelay and retries.
+  gemini-lite:                    # 15 / 250K / 500
+    provider: openai_compatible
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemini-3.5-flash-lite
+    api_key_env: GOOGLE_API_KEY
+    mode: sync
+    structured_output: json_schema
+    temperature: 0
+    concurrency: 3                # ~1 s per offer
+    rate_limit: 14/min
+    daily_limit: 480
+    quota_timezone: America/Los_Angeles
+    timeout_seconds: 60
+
+  gemini-lite-31:                 # 15 / 250K / 500
+    provider: openai_compatible
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemini-3.1-flash-lite
+    api_key_env: GOOGLE_API_KEY
+    mode: sync
+    structured_output: json_schema
+    temperature: 0
+    concurrency: 3
+    rate_limit: 14/min
+    daily_limit: 480
+    quota_timezone: America/Los_Angeles
+    timeout_seconds: 60
+
+  # Gemma 4 on Google always "thinks" (hidden, 23-30 s per call) and rejects reasoning_effort /
+  # thinking options with HTTP 400, so never put those in extra_body (the loader refuses).
+  # Only json_schema works reliably (prompt_only / json_object leak "<thought>" text).
+  # Throughput comes from concurrency: 8 calls in flight x ~25 s ~= 19/min. The 16K TPM quota
+  # (~820 tokens per offer) is the real cap, so rate_limit is 15/min rather than the 30 RPM.
+  gemma-31b:                      # 30 / 16K / 14.4K
+    provider: openai_compatible
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemma-4-31b-it
+    api_key_env: GOOGLE_API_KEY
+    mode: sync
+    structured_output: json_schema
+    temperature: 0
+    concurrency: 8
+    rate_limit: 15/min
+    daily_limit: 14000
+    quota_timezone: America/Los_Angeles
+    timeout_seconds: 120
+
+  gemma-26b:                      # 30 / 16K / 14.4K
+    provider: openai_compatible
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemma-4-26b-a4b-it
+    api_key_env: GOOGLE_API_KEY
+    mode: sync
+    structured_output: json_schema
+    temperature: 0
+    concurrency: 8
+    rate_limit: 15/min
+    daily_limit: 14000
+    quota_timezone: America/Los_Angeles
+    timeout_seconds: 120
