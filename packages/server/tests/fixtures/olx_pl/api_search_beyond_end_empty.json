@@ -1,0 +1,27 @@
+{
+ "data": [],
+ "metadata": {
+  "total_elements": 173,
+  "visible_total_count": 173,
+  "promoted": [],
+  "search_id": "C13E8DF6180E1610C6B7870A9D7FB43B",
+  "search_suggestion": {
+   "type": "extended_s2v",
+   "url": "https://www.olx.pl/api/v1/offers?query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400&offset=0&limit=40&strategy=s2v",
+   "changes": {
+    "strategy": "s2v"
+   }
+  }
+ },
+ "links": {
+  "self": {
+   "href": "https://www.olx.pl/api/v1/offers?query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400&offset=200&limit=40"
+  },
+  "previous": {
+   "href": "https://www.olx.pl/api/v1/offers?query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400&offset=160&limit=40"
+  },
+  "first": {
+   "href": "https://www.olx.pl/api/v1/offers?query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400&offset=0&limit=40"
+  }
+ }
+}

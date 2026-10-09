@@ -1,0 +1,16 @@
+# Categories and attribute schemas for LLM extraction (ADR 0007).
+# Unknown values are extracted as null, never guessed.
+# Format: <name>: {version (bump on every schema change), description?, attributes: {...}}
+# Attribute: {type: string|integer|number|boolean|enum, description?, values? (enum only)}
+# 'other' is reserved (offers that fit no category).
+laptop:
+  version: 1
+  description: "A laptop or notebook computer (not a charger, bag, spare part or desktop PC)"
+  attributes:
+    gpu:          {type: string, description: "GPU model, e.g. GTX 1650"}
+    cpu:          {type: string}
+    ram_gb:       {type: integer}
+    storage_gb:   {type: integer}
+    storage_type: {type: enum, values: [ssd, hdd, emmc]}
+    screen_in:    {type: number}
+    condition:    {type: enum, values: [new, used, damaged, for_parts]}

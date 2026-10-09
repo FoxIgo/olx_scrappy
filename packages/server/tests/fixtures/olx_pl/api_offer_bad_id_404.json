@@ -1,0 +1,10 @@
+{
+ "id": null,
+ "result": null,
+ "error": {
+  "request": {
+   "code": "request json error",
+   "message": "unknown method or incorrect parameters"
+  }
+ }
+}

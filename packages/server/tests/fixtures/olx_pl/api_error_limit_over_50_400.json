@@ -1,0 +1,15 @@
+{
+ "error": {
+  "status": 400,
+  "code": 400,
+  "title": "Invalid request",
+  "detail": "Data validation error occurred",
+  "validation": [
+   {
+    "field": "limit",
+    "title": "This value should be between 0 and 50.",
+    "detail": "This value should be between 0 and 50."
+   }
+  ]
+ }
+}

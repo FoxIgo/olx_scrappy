@@ -1,0 +1,328 @@
+"""In-memory persistence: repositories, job queue and unit of work.
+
+Reference behaviour for adapter authors:
+
+* A unit of work works on a private deep copy of the committed state and publishes it on
+  ``commit`` (serialised, last commit wins: like SQLite's single writer). Without commit,
+  everything is discarded.
+* Repositories store and return *copies*, so mutating a returned entity changes nothing
+  until ``save`` (catches handlers that forget to save).
+* The job queue enforces dedup keys forever, claims FIFO by ``(available_at, seq)``.
+"""
+
+from __future__ import annotations
+
+import copy
+from collections.abc import Collection
+from dataclasses import dataclass, field, replace
+from datetime import datetime
+from types import TracebackType
+from typing import Self
+
+from scrappy.application.jobs.model import Job, JobId, JobResult, JobStatus, JobType
+from scrappy.domain.extraction import OfferExtraction
+from scrappy.domain.offer import Offer, OfferId, OfferSnapshot
+from scrappy.domain.run import ScrapeRun
+from scrappy.domain.search import SavedSearch, SearchName, SearchOffer
+from scrappy.domain.shared import RunId
+
+
+@dataclass
+class StoreState:
+    offers: dict[OfferId, Offer] = field(default_factory=dict[OfferId, Offer])
+    snapshots: list[OfferSnapshot] = field(default_factory=list[OfferSnapshot])
+    searches: dict[SearchName, SavedSearch] = field(default_factory=dict[SearchName, SavedSearch])
+    links: dict[tuple[SearchName, OfferId], SearchOffer] = field(
+        default_factory=dict[tuple[SearchName, OfferId], SearchOffer]
+    )
+    extractions: list[OfferExtraction] = field(default_factory=list[OfferExtraction])
+    runs: dict[RunId, ScrapeRun] = field(default_factory=dict[RunId, ScrapeRun])
+    jobs: dict[JobId, Job] = field(default_factory=dict[JobId, Job])
+    job_seq: dict[JobId, int] = field(default_factory=dict[JobId, int])
+    dedup_keys: set[str] = field(default_factory=set[str])
+    next_seq: int = 0
+
+
+class InMemoryStore:
+    """Committed state shared by all units of work (and the read-side fake)."""
+
+    def __init__(self) -> None:
+        self.state = StoreState()
+        self.commits = 0
+
+    def uow(self) -> InMemoryUnitOfWork:
+        """Use as the ``UnitOfWorkFactory``: ``uow=store.uow``."""
+        return InMemoryUnitOfWork(self)
+
+
+def _copy[T](value: T) -> T:
+    return copy.deepcopy(value)
+
+
+class InMemoryOfferRepository:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def get(self, offer_id: OfferId) -> Offer | None:
+        offer = self._s.offers.get(offer_id)
+        return _copy(offer) if offer else None
+
+    async def get_many(self, offer_ids: Collection[OfferId]) -> dict[OfferId, Offer]:
+        return {i: _copy(self._s.offers[i]) for i in offer_ids if i in self._s.offers}
+
+    async def save(self, offer: Offer) -> None:
+        self._s.offers[offer.id] = _copy(offer)
+
+    async def add_snapshot(self, snapshot: OfferSnapshot) -> None:
+        self._s.snapshots.append(snapshot)
+
+    async def list_snapshots(self, offer_id: OfferId) -> list[OfferSnapshot]:
+        return [s for s in self._s.snapshots if s.offer_id == offer_id]
+
+    async def list_with_content(self, *, after: OfferId | None, limit: int) -> list[Offer]:
+        def key(i: OfferId) -> tuple[str, str]:
+            return (i.source.value, i.external_id)
+
+        ids = sorted((i for i, o in self._s.offers.items() if o.content_hash), key=key)
+        if after is not None:
+            ids = [i for i in ids if key(i) > key(after)]
+        return [_copy(self._s.offers[i]) for i in ids[:limit]]
+
+
+class InMemorySavedSearchRepository:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def get(self, name: SearchName) -> SavedSearch | None:
+        search = self._s.searches.get(name)
+        return _copy(search) if search else None
+
+    async def save(self, search: SavedSearch) -> None:
+        self._s.searches[search.name] = _copy(search)
+
+    async def list_all(self) -> list[SavedSearch]:
+        return [_copy(self._s.searches[n]) for n in sorted(self._s.searches)]
+
+
+class InMemorySearchOfferRepository:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def get(self, search: SearchName, offer_id: OfferId) -> SearchOffer | None:
+        link = self._s.links.get((search, offer_id))
+        return _copy(link) if link else None
+
+    async def get_many(
+        self, search: SearchName, offer_ids: Collection[OfferId]
+    ) -> dict[OfferId, SearchOffer]:
+        return {
+            i: _copy(self._s.links[(search, i)]) for i in offer_ids if (search, i) in self._s.links
+        }
+
+    async def save(self, link: SearchOffer) -> None:
+        self._s.links[(link.search, link.offer_id)] = _copy(link)
+
+    async def list_for_offer(self, offer_id: OfferId) -> list[SearchOffer]:
+        links = [link for (_, o), link in self._s.links.items() if o == offer_id]
+        return [_copy(link) for link in sorted(links, key=lambda link: link.search)]
+
+
+class InMemoryExtractionRepository:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def add(self, extraction: OfferExtraction) -> None:
+        self._s.extractions.append(extraction)
+
+    async def latest(self, offer_id: OfferId) -> OfferExtraction | None:
+        best: OfferExtraction | None = None
+        for extraction in self._s.extractions:  # insertion order breaks ties: last wins
+            if extraction.offer_id == offer_id and (
+                best is None or extraction.provenance.extracted_at >= best.provenance.extracted_at
+            ):
+                best = extraction
+        return best
+
+    async def latest_many(self, offer_ids: Collection[OfferId]) -> dict[OfferId, OfferExtraction]:
+        result: dict[OfferId, OfferExtraction] = {}
+        for offer_id in offer_ids:
+            latest = await self.latest(offer_id)
+            if latest is not None:
+                result[offer_id] = latest
+        return result
+
+
+class InMemoryScrapeRunRepository:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def get(self, run_id: RunId) -> ScrapeRun | None:
+        run = self._s.runs.get(run_id)
+        return _copy(run) if run else None
+
+    async def save(self, run: ScrapeRun) -> None:
+        self._s.runs[run.id] = _copy(run)
+
+    async def find_running(self, search: SearchName) -> ScrapeRun | None:
+        for run in self._s.runs.values():
+            if run.search == search and run.is_running:
+                return _copy(run)
+        return None
+
+    async def list_for_search(self, search: SearchName, *, limit: int) -> list[ScrapeRun]:
+        runs = [r for r in self._s.runs.values() if r.search == search]
+        runs.sort(key=lambda r: r.started_at, reverse=True)
+        return [_copy(r) for r in runs[:limit]]
+
+
+class InMemoryJobQueue:
+    def __init__(self, state: StoreState) -> None:
+        self._s = state
+
+    async def enqueue(self, job: Job) -> bool:
+        if job.dedup_key in self._s.dedup_keys:
+            return False
+        if job.id in self._s.jobs:
+            raise ValueError(f"duplicate job id {job.id}")
+        self._s.dedup_keys.add(job.dedup_key)
+        self._s.jobs[job.id] = replace(job, status=JobStatus.PENDING)
+        self._s.job_seq[job.id] = self._s.next_seq
+        self._s.next_seq += 1
+        return True
+
+    async def claim(self, types: Collection[JobType], *, limit: int, now: datetime) -> list[Job]:
+        due = [
+            job
+            for job in self._s.jobs.values()
+            if job.status is JobStatus.PENDING
+            and job.available_at <= now
+            and (not types or job.type in types)
+        ]
+        due.sort(key=lambda job: (job.available_at, self._s.job_seq[job.id]))
+        claimed: list[Job] = []
+        for job in due[:limit]:
+            updated = replace(job, status=JobStatus.RUNNING, attempts=job.attempts + 1)
+            self._s.jobs[job.id] = updated
+            claimed.append(updated)
+        return claimed
+
+    async def complete(self, job_id: JobId, result: JobResult, *, now: datetime) -> None:
+        job = self._s.jobs[job_id]
+        self._s.jobs[job_id] = replace(job, status=JobStatus.DONE, result=result, finished_at=now)
+
+    async def fail(
+        self,
+        job_id: JobId,
+        *,
+        error: str,
+        retry_at: datetime | None,
+        result: JobResult | None = None,
+        now: datetime,
+    ) -> None:
+        job = self._s.jobs[job_id]
+        if retry_at is not None:
+            updated = replace(
+                job, status=JobStatus.PENDING, available_at=retry_at, last_error=error
+            )
+        else:
+            updated = replace(
+                job, status=JobStatus.FAILED, last_error=error, result=result, finished_at=now
+            )
+        self._s.jobs[job_id] = updated
+
+    async def get(self, job_id: JobId) -> Job | None:
+        return self._s.jobs.get(job_id)
+
+    async def count_unfinished(self, run_id: RunId) -> int:
+        return sum(
+            1 for job in self._s.jobs.values() if job.run_id == run_id and job.status.is_unfinished
+        )
+
+    async def list_for_run(self, run_id: RunId) -> list[Job]:
+        jobs = [job for job in self._s.jobs.values() if job.run_id == run_id]
+        return sorted(jobs, key=lambda job: self._s.job_seq[job.id])
+
+    async def requeue_failed(self, run_id: RunId, *, now: datetime) -> int:
+        count = 0
+        for job in list(self._s.jobs.values()):
+            if job.run_id == run_id and job.status in (JobStatus.FAILED, JobStatus.RUNNING):
+                self._s.jobs[job.id] = replace(
+                    job,
+                    status=JobStatus.PENDING,
+                    attempts=0,
+                    available_at=now,
+                    result=None,
+                    finished_at=None,
+                )
+                count += 1
+        return count
+
+    async def requeue_orphaned(self, *, now: datetime) -> int:
+        count = 0
+        for job in list(self._s.jobs.values()):
+            if job.status is JobStatus.RUNNING:
+                self._s.jobs[job.id] = replace(job, status=JobStatus.PENDING, available_at=now)
+                count += 1
+        return count
+
+
+class InMemoryUnitOfWork:
+    def __init__(self, store: InMemoryStore) -> None:
+        self._store = store
+        self._state: StoreState | None = None
+        self._committed = False
+
+    def _working(self) -> StoreState:
+        if self._state is None:
+            raise RuntimeError("use the unit of work inside 'async with'")
+        return self._state
+
+    @property
+    def offers(self) -> InMemoryOfferRepository:
+        return InMemoryOfferRepository(self._working())
+
+    @property
+    def searches(self) -> InMemorySavedSearchRepository:
+        return InMemorySavedSearchRepository(self._working())
+
+    @property
+    def search_offers(self) -> InMemorySearchOfferRepository:
+        return InMemorySearchOfferRepository(self._working())
+
+    @property
+    def extractions(self) -> InMemoryExtractionRepository:
+        return InMemoryExtractionRepository(self._working())
+
+    @property
+    def runs(self) -> InMemoryScrapeRunRepository:
+        return InMemoryScrapeRunRepository(self._working())
+
+    @property
+    def jobs(self) -> InMemoryJobQueue:
+        return InMemoryJobQueue(self._working())
+
+    async def __aenter__(self) -> Self:
+        if self._state is not None:
+            raise RuntimeError("a unit of work is single-use")
+        self._state = copy.deepcopy(self._store.state)
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        if not self._committed:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        self._store.state = copy.deepcopy(self._working())
+        self._store.commits += 1
+        self._committed = True
+
+    async def rollback(self) -> None:
+        """Discard uncommitted writes; the unit of work sees committed state again."""
+        if self._state is not None:
+            self._state = copy.deepcopy(self._store.state)
+        self._committed = False

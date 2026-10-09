@@ -1,0 +1,229 @@
+{
+ "data": {
+  "id": 1098526767,
+  "url": "https://www.olx.pl/d/oferta/laptop-gamingowy-asus-tuf-f15-gtx1650-16gb-ram-CID99-ID1cliZF.html",
+  "title": "Laptop Gamingowy Asus TUF F15 GTX1650 16gb RAM",
+  "last_refresh_time": "2026-10-08T18:27:21+02:00",
+  "created_time": "2026-09-15T20:21:33+02:00",
+  "valid_to_time": "2026-10-15T20:21:34+02:00",
+  "pushup_time": "2026-10-08T18:27:21+02:00",
+  "omnibus_pushup_time": "2026-10-08T18:27:21+02:00",
+  "description": "Laptop używany w dobrym stanie. Ekran bez wad. Do laptopa dołączam Zasilacz oraz oryginalne pudełko.",
+  "promotion": {
+   "highlighted": true,
+   "urgent": false,
+   "top_ad": true,
+   "options": [
+    "bundle_optimum"
+   ],
+   "b2c_ad_page": false,
+   "premium_ad_page": false
+  },
+  "params": [
+   {
+    "key": "price",
+    "name": "Cena",
+    "type": "price",
+    "value": {
+     "value": 1300,
+     "type": "price",
+     "arranged": false,
+     "budget": false,
+     "currency": "PLN",
+     "negotiable": false,
+     "converted_value": null,
+     "previous_value": null,
+     "converted_previous_value": null,
+     "converted_currency": null,
+     "label": "1 300 zł",
+     "previous_label": null
+    }
+   },
+   {
+    "key": "state",
+    "name": "Stan",
+    "type": "select",
+    "value": {
+     "key": "used",
+     "label": "Używane"
+    }
+   },
+   {
+    "key": "screendiagonal_laptops",
+    "name": "Przekątna ekranu",
+    "type": "select",
+    "value": {
+     "key": "15-15-9",
+     "label": "15-15,9\""
+    }
+   },
+   {
+    "key": "laptops_series",
+    "name": "Seria",
+    "type": "select",
+    "value": {
+     "key": "tuf-gaming",
+     "label": "TUF Gaming"
+    }
+   },
+   {
+    "key": "operatingsystem_laptops",
+    "name": "System operacyjny",
+    "type": "select",
+    "value": {
+     "key": "windows11",
+     "label": "Windows 11"
+    }
+   },
+   {
+    "key": "graphicscardtype_laptops",
+    "name": "Rodzaj karty graficznej",
+    "type": "select",
+    "value": {
+     "key": "dedicated",
+     "label": "Dedykowana"
+    }
+   },
+   {
+    "key": "processorseries_laptops",
+    "name": "Seria procesora",
+    "type": "select",
+    "value": {
+     "key": "intel-core-i5",
+     "label": "Intel Core i5"
+    }
+   },
+   {
+    "key": "ramsize_laptops",
+    "name": "Wielkość pamięci RAM",
+    "type": "select",
+    "value": {
+     "key": "16gb",
+     "label": "16GB"
+    }
+   },
+   {
+    "key": "harddisktype_laptops",
+    "name": "Typ dysku twardego",
+    "type": "select",
+    "value": {
+     "key": "ssd",
+     "label": "SSD"
+    }
+   },
+   {
+    "key": "disksize_laptops",
+    "name": "Wielkość dysku",
+    "type": "select",
+    "value": {
+     "key": "257gb-512gb",
+     "label": "257GB - 512GB"
+    }
+   }
+  ],
+  "key_params": [],
+  "business": false,
+  "user": {
+   "id": 24901353,
+   "created": "2014-08-31T16:43:29+02:00",
+   "other_ads_enabled": true,
+   "name": "Adam",
+   "logo": null,
+   "logo_ad_page": null,
+   "social_network_account_type": "facebook",
+   "photo": null,
+   "banner_mobile": "",
+   "banner_desktop": "",
+   "company_name": "",
+   "about": "",
+   "b2c_business_page": false,
+   "is_online": false,
+   "last_seen": "2026-09-24T15:17:28+02:00",
+   "seller_type": null,
+   "uuid": "a1e1fed7-8b49-4e44-a818-bd34425160be"
+  },
+  "status": "active",
+  "contact": {
+   "name": "Adam",
+   "phone": true,
+   "chat": true,
+   "negotiation": false,
+   "courier": false
+  },
+  "map": {
+   "zoom": 12,
+   "lat": 49.8973,
+   "lon": 19.05976,
+   "radius": 1,
+   "show_detailed": false
+  },
+  "location": {
+   "city": {
+    "id": 1571,
+    "name": "Bestwina",
+    "normalized_name": "bestwina"
+   },
+   "region": {
+    "id": 6,
+    "name": "Śląskie",
+    "normalized_name": "slaskie"
+   }
+  },
+  "photos": [
+   {
+    "id": 11508512117,
+    "filename": "4q25lswak8ld1-PL",
+    "rotation": 0,
+    "width": 4000,
+    "height": 2252,
+    "link": "https://ireland.apollo.olxcdn.com:443/v1/files/4q25lswak8ld1-PL/image;s={width}x{height}"
+   },
+   {
+    "id": 11508512118,
+    "filename": "959f6muv4dxh2-PL",
+    "rotation": 0,
+    "width": 4000,
+    "height": 2252,
+    "link": "https://ireland.apollo.olxcdn.com:443/v1/files/959f6muv4dxh2-PL/image;s={width}x{height}"
+   },
+   {
+    "id": 11508512119,
+    "filename": "9ld88gx7hae6-PL",
+    "rotation": 0,
+    "width": 4000,
+    "height": 2252,
+    "link": "https://ireland.apollo.olxcdn.com:443/v1/files/9ld88gx7hae6-PL/image;s={width}x{height}"
+   }
+  ],
+  "partner": null,
+  "category": {
+   "id": 3103,
+   "type": "electronics"
+  },
+  "delivery": {
+   "rock": {
+    "offer_id": null,
+    "active": false,
+    "mode": "NotEligible"
+   }
+  },
+  "safedeal": {
+   "weight": 0,
+   "weight_grams": 0,
+   "status": "unactive",
+   "safedeal_blocked": false,
+   "allowed_quantity": []
+  },
+  "shop": {
+   "subdomain": null
+  },
+  "isGpsrAvailable": true,
+  "offer_type": "offer",
+  "protect_phone": true
+ },
+ "links": {
+  "self": {
+   "href": "https://www.olx.pl/api/v1/offers/1098526767"
+  }
+ }
+}

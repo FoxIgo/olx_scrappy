@@ -1,0 +1,40 @@
+# Source configuration. One entry per site recipe (ADR 0004).
+#
+# engine: curl_cffi | httpx | scrapling | scrapling_stealthy | scrapling_dynamic
+#         or a list for a fallback chain (escalates only when the previous engine is BLOCKED).
+#         scrapling_stealthy / scrapling_dynamic need the `browser` extra.
+# Source-level keys: enabled, page_size (optional), health (optional thresholds, see below);
+# all other keys go to the engine config.
+# health: {max_rejected_ratio: 0.05, min_sample: 5, min_fill_rates: {discovery: {price: 0.95}}}
+# rate_limit: "N/Ts" = N requests per T seconds per host ("1/3s", "2/10s", "30/m", "100/h").
+sources:
+  olx_pl:
+    enabled: true
+    engine: curl_cffi       # plain httpx gets CloudFront 403 (R16)
+    impersonate: chrome
+    rate_limit: 1/3s
+    concurrency: 1
+    timeout_seconds: 30
+    retries: 3
+    archive: true           # raw pages -> gzip under archive_dir
+    # archive_dir: data/raw
+    # cache_dir: .cache/pages   # dev only: on-disk page cache for offline work
+    # cache_ttl_seconds: 3600
+
+  # Example: official API with plain httpx.
+  # allegro_api:
+  #   enabled: false
+  #   engine: httpx
+  #   rate_limit: 2/s
+  #   concurrency: 2
+  #   retries: 3
+  #   archive: false
+
+  # Example: fallback chain, browser engine only when the HTTP engine is blocked.
+  # allegro_pl:
+  #   enabled: false
+  #   engine: [curl_cffi, scrapling_stealthy]
+  #   rate_limit: 1/10s
+  #   concurrency: 1
+  #   retries: 2
+  #   archive: true

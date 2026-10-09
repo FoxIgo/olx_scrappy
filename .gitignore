@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.pyright/
+.coverage
+htmlcov/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Node (future web package)
+node_modules/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+
+.claude/

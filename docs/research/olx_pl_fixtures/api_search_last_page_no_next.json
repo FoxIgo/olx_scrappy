@@ -1,0 +1,460 @@
+{
+ "data": [
+  {
+   "id": 1097583479,
+   "url": "https://www.olx.pl/d/oferta/laptop-gamingowy-hp-pavilion-16-a0030nw-16-1-CID99-ID1chlBl.html",
+   "title": "Laptop gamingowy HP Pavilion 16-a0030nw 16,1\"",
+   "last_refresh_time": "2026-09-11T12:28:18+02:00",
+   "created_time": "2026-09-11T12:25:39+02:00",
+   "valid_to_time": "2026-10-11T12:25:40+02:00",
+   "pushup_time": null,
+   "description": "Sprzedam laptop gamingowy HP Pavilion 16-a0030nw, 16,1”.<br />\n<br />\n• Procesor: Intel Core i5-10300H<br />\n• RAM: 8 GB<br />\n• Dysk SSD: 512 GB<br />\n• Karta graficzna: NVIDIA GeForce GTX 1650 Ti<br />\n• Ekran: 16,1”<br />\n• System: Windows 11<br />\n• Podświetlana klawiatura<br />\n<br />\nLaptop jest w dobrym stanie, był użytkowany bardzo ostrożnie. Wszystko działa prawidłowo, bez żadnych problemów. Bateria dobrze trzyma.<br />\n<br />\nLaptop świetnie sprawdzi się do pracy, nauki, obróbki zdjęć i filmów oraz do gier.<br />\n<br />\nMożliwość sprawdzenia laptopa przy odbiorze osobistym.<br />\nDodatkowe zdjęcia lub film mogę wysłać na życzenie.",
+   "promotion": {
+    "highlighted": false,
+    "urgent": false,
+    "top_ad": false,
+    "options": [],
+    "b2c_ad_page": false,
+    "premium_ad_page": false
+   },
+   "params": [
+    {
+     "key": "price",
+     "name": "Cena",
+     "type": "price",
+     "value": {
+      "value": 1400,
+      "type": "price",
+      "arranged": false,
+      "budget": false,
+      "currency": "PLN",
+      "negotiable": false,
+      "converted_value": null,
+      "previous_value": null,
+      "converted_previous_value": null,
+      "converted_currency": null,
+      "label": "1 400 zł",
+      "previous_label": null
+     }
+    },
+    {
+     "key": "state",
+     "name": "Stan",
+     "type": "select",
+     "value": {
+      "key": "used",
+      "label": "Używane"
+     }
+    },
+    {
+     "key": "screendiagonal_laptops",
+     "name": "Przekątna ekranu",
+     "type": "select",
+     "value": {
+      "key": "16-and-more",
+      "label": "16-16,9\""
+     }
+    },
+    {
+     "key": "laptops_series",
+     "name": "Seria",
+     "type": "select",
+     "value": {
+      "key": "pavilion-gaming",
+      "label": "Pavilion Gaming"
+     }
+    },
+    {
+     "key": "operatingsystem_laptops",
+     "name": "System operacyjny",
+     "type": "select",
+     "value": {
+      "key": "windows11",
+      "label": "Windows 11"
+     }
+    },
+    {
+     "key": "graphicscardtype_laptops",
+     "name": "Rodzaj karty graficznej",
+     "type": "select",
+     "value": {
+      "key": "dedicated",
+      "label": "Dedykowana"
+     }
+    },
+    {
+     "key": "ramsize_laptops",
+     "name": "Wielkość pamięci RAM",
+     "type": "select",
+     "value": {
+      "key": "6gb-12gb",
+      "label": "6GB - 12GB"
+     }
+    },
+    {
+     "key": "harddisktype_laptops",
+     "name": "Typ dysku twardego",
+     "type": "select",
+     "value": {
+      "key": "hdd-ssd",
+      "label": "HDD + SSD"
+     }
+    },
+    {
+     "key": "disksize_laptops",
+     "name": "Wielkość dysku",
+     "type": "select",
+     "value": {
+      "key": "257gb-512gb",
+      "label": "257GB - 512GB"
+     }
+    }
+   ],
+   "key_params": [],
+   "business": false,
+   "user": {
+    "id": 2488371832,
+    "created": "2024-10-10T12:00:22+02:00",
+    "other_ads_enabled": true,
+    "name": "apa6sky9",
+    "logo": null,
+    "logo_ad_page": null,
+    "social_network_account_type": null,
+    "photo": null,
+    "banner_mobile": "",
+    "banner_desktop": "",
+    "company_name": "",
+    "about": "",
+    "b2c_business_page": false,
+    "is_online": false,
+    "last_seen": "2026-09-11T12:25:40+02:00",
+    "seller_type": null,
+    "uuid": "8481e88a-543b-4d62-ae2b-98b75c11f292"
+   },
+   "status": "active",
+   "contact": {
+    "name": "apa6sky9",
+    "phone": true,
+    "chat": true,
+    "negotiation": false,
+    "courier": false
+   },
+   "map": {
+    "zoom": 13,
+    "lat": 52.26735,
+    "lon": 20.98132,
+    "radius": 7,
+    "show_detailed": false
+   },
+   "location": {
+    "city": {
+     "id": 17871,
+     "name": "Warszawa",
+     "normalized_name": "warszawa"
+    },
+    "district": {
+     "id": 363,
+     "name": "Żoliborz"
+    },
+    "region": {
+     "id": 2,
+     "name": "Mazowieckie",
+     "normalized_name": "mazowieckie"
+    }
+   },
+   "photos": [
+    {
+     "id": 11454825656,
+     "filename": "hi80kslxcjiy-PL",
+     "rotation": 0,
+     "width": 750,
+     "height": 1000,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/hi80kslxcjiy-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11454825657,
+     "filename": "0iqg5edwuv673-PL",
+     "rotation": 0,
+     "width": 750,
+     "height": 1000,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/0iqg5edwuv673-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11454825658,
+     "filename": "exjgz68ix5sl2-PL",
+     "rotation": 0,
+     "width": 750,
+     "height": 1000,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/exjgz68ix5sl2-PL/image;s={width}x{height}"
+    }
+   ],
+   "partner": null,
+   "category": {
+    "id": 3106,
+    "type": "electronics"
+   },
+   "delivery": {
+    "rock": {
+     "offer_id": null,
+     "active": false,
+     "mode": "NotEligible"
+    }
+   },
+   "safedeal": {
+    "weight": 0,
+    "weight_grams": 0,
+    "status": "unactive",
+    "safedeal_blocked": false,
+    "allowed_quantity": []
+   },
+   "shop": {
+    "subdomain": null
+   },
+   "isGpsrAvailable": true,
+   "offer_type": "offer",
+   "protect_phone": true
+  },
+  {
+   "id": 656210147,
+   "url": "https://www.olx.pl/d/oferta/laptop-gamingowy-dell-CID99-IDIpoeD.html",
+   "title": "Laptop Gamingowy Dell",
+   "last_refresh_time": "2026-09-11T11:48:34+02:00",
+   "created_time": "2021-02-04T20:47:55+01:00",
+   "valid_to_time": "2026-10-11T11:48:32+02:00",
+   "pushup_time": null,
+   "description": "Witam, <br />\nna sprzedaż piękny gamingowy laptop Dell Inspiron G3.<br />\nSpecyfikacja:<br />\nProcesor Intel Core I5 9300H<br />\nPamieć RAM 8GB ddr4<br />\nKarta Graficzna Geforce GTX 1650<br />\nDysk 512 Gb ssd<br />\n<br />\nLaptop ma podświetlaną duńską klawiaturę. Nie dziala bateria.",
+   "promotion": {
+    "highlighted": false,
+    "urgent": false,
+    "top_ad": false,
+    "options": [],
+    "b2c_ad_page": false,
+    "premium_ad_page": false
+   },
+   "params": [
+    {
+     "key": "price",
+     "name": "Cena",
+     "type": "price",
+     "value": {
+      "value": 1400,
+      "type": "arranged",
+      "arranged": true,
+      "budget": false,
+      "currency": "PLN",
+      "negotiable": true,
+      "converted_value": null,
+      "previous_value": null,
+      "converted_previous_value": null,
+      "converted_currency": null,
+      "label": "1 400 zł",
+      "previous_label": null
+     }
+    },
+    {
+     "key": "state",
+     "name": "Stan",
+     "type": "select",
+     "value": {
+      "key": "used",
+      "label": "Używane"
+     }
+    },
+    {
+     "key": "operatingsystem_laptops",
+     "name": "System operacyjny",
+     "type": "select",
+     "value": {
+      "key": "windows10",
+      "label": "Windows 10"
+     }
+    },
+    {
+     "key": "graphicscardtype_laptops",
+     "name": "Rodzaj karty graficznej",
+     "type": "select",
+     "value": {
+      "key": "dedicated",
+      "label": "Dedykowana"
+     }
+    },
+    {
+     "key": "processorseries_laptops",
+     "name": "Seria procesora",
+     "type": "select",
+     "value": {
+      "key": "intel-core-i5",
+      "label": "Intel Core i5"
+     }
+    },
+    {
+     "key": "ramsize_laptops",
+     "name": "Wielkość pamięci RAM",
+     "type": "select",
+     "value": {
+      "key": "6gb-12gb",
+      "label": "6GB - 12GB"
+     }
+    },
+    {
+     "key": "harddisktype_laptops",
+     "name": "Typ dysku twardego",
+     "type": "select",
+     "value": {
+      "key": "ssd",
+      "label": "SSD"
+     }
+    },
+    {
+     "key": "disksize_laptops",
+     "name": "Wielkość dysku",
+     "type": "select",
+     "value": {
+      "key": "257gb-512gb",
+      "label": "257GB - 512GB"
+     }
+    }
+   ],
+   "key_params": [],
+   "business": false,
+   "user": {
+    "id": 67603838,
+    "created": "2017-05-25T09:12:28+02:00",
+    "other_ads_enabled": true,
+    "name": "Teofil",
+    "logo": null,
+    "logo_ad_page": null,
+    "social_network_account_type": null,
+    "photo": null,
+    "banner_mobile": "",
+    "banner_desktop": "",
+    "company_name": "",
+    "about": "",
+    "b2c_business_page": false,
+    "is_online": false,
+    "last_seen": "2026-10-04T19:14:07+02:00",
+    "seller_type": null,
+    "uuid": "0f2be2bf-837a-40a0-90fb-6c6c0760f804"
+   },
+   "status": "active",
+   "contact": {
+    "name": "Grzegorz",
+    "phone": true,
+    "chat": true,
+    "negotiation": true,
+    "courier": false
+   },
+   "map": {
+    "zoom": 12,
+    "lat": 50.70599,
+    "lon": 22.4106,
+    "radius": 3,
+    "show_detailed": false
+   },
+   "location": {
+    "city": {
+     "id": 134415,
+     "name": "Janów Lubelski",
+     "normalized_name": "janow-lubelski"
+    },
+    "region": {
+     "id": 8,
+     "name": "Lubelskie",
+     "normalized_name": "lubelskie"
+    }
+   },
+   "photos": [
+    {
+     "id": 2376402012,
+     "filename": "ao8ui0jjd8j71-PL",
+     "rotation": 0,
+     "width": 1000,
+     "height": 473,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/ao8ui0jjd8j71-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 2376402122,
+     "filename": "e891t7pvy24y1-PL",
+     "rotation": 0,
+     "width": 331,
+     "height": 700,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/e891t7pvy24y1-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 2376402213,
+     "filename": "k2cwtcya9n0p3-PL",
+     "rotation": 0,
+     "width": 331,
+     "height": 700,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/k2cwtcya9n0p3-PL/image;s={width}x{height}"
+    }
+   ],
+   "partner": null,
+   "category": {
+    "id": 3104,
+    "type": "electronics"
+   },
+   "delivery": {
+    "rock": {
+     "offer_id": "aaaaaaaa-0000-0000-0000-910564224614",
+     "active": true,
+     "mode": "BuyWithDelivery"
+    }
+   },
+   "safedeal": {
+    "weight": 0,
+    "weight_grams": 0,
+    "status": "unactive",
+    "safedeal_blocked": false,
+    "allowed_quantity": []
+   },
+   "shop": {
+    "subdomain": null
+   },
+   "isGpsrAvailable": true,
+   "offer_type": "offer",
+   "protect_phone": true
+  }
+ ],
+ "metadata": {
+  "total_elements": 173,
+  "visible_total_count": 173,
+  "promoted": [],
+  "search_id": "C13E8DF6180E1610C6B7870A9D7FB43B",
+  "search_suggestion": {
+   "type": "extended_s2v",
+   "url": "https://www.olx.pl/api/v1/offers?query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400&offset=0&limit=40&strategy=s2v",
+   "changes": {
+    "strategy": "s2v"
+   }
+  },
+  "source": {
+   "organic": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ]
+  }
+ },
+ "links": {
+  "self": {
+   "href": "https://www.olx.pl/api/v1/offers?query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400&offset=160&limit=40"
+  },
+  "previous": {
+   "href": "https://www.olx.pl/api/v1/offers?query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400&offset=120&limit=40"
+  },
+  "first": {
+   "href": "https://www.olx.pl/api/v1/offers?query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400&offset=0&limit=40"
+  }
+ }
+}

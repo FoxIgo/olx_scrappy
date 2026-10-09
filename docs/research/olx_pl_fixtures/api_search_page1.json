@@ -1,0 +1,1077 @@
+{
+ "data": [
+  {
+   "id": 1098526767,
+   "url": "https://www.olx.pl/d/oferta/laptop-gamingowy-asus-tuf-f15-gtx1650-16gb-ram-CID99-ID1cliZF.html",
+   "title": "Laptop Gamingowy Asus TUF F15 GTX1650 16gb RAM",
+   "last_refresh_time": "2026-10-08T18:27:21+02:00",
+   "created_time": "2026-09-15T20:21:33+02:00",
+   "valid_to_time": "2026-10-15T20:21:34+02:00",
+   "pushup_time": "2026-10-08T18:27:21+02:00",
+   "omnibus_pushup_time": "2026-10-08T18:27:21+02:00",
+   "description": "Laptop używany w dobrym stanie. Ekran bez wad. Do laptopa dołączam Zasilacz oraz oryginalne pudełko.",
+   "promotion": {
+    "highlighted": true,
+    "urgent": false,
+    "top_ad": true,
+    "options": [
+     "bundle_optimum"
+    ],
+    "b2c_ad_page": false,
+    "premium_ad_page": false
+   },
+   "params": [
+    {
+     "key": "price",
+     "name": "Cena",
+     "type": "price",
+     "value": {
+      "value": 1300,
+      "type": "price",
+      "arranged": false,
+      "budget": false,
+      "currency": "PLN",
+      "negotiable": false,
+      "converted_value": null,
+      "previous_value": null,
+      "converted_previous_value": null,
+      "converted_currency": null,
+      "label": "1 300 zł",
+      "previous_label": null
+     }
+    },
+    {
+     "key": "state",
+     "name": "Stan",
+     "type": "select",
+     "value": {
+      "key": "used",
+      "label": "Używane"
+     }
+    },
+    {
+     "key": "screendiagonal_laptops",
+     "name": "Przekątna ekranu",
+     "type": "select",
+     "value": {
+      "key": "15-15-9",
+      "label": "15-15,9\""
+     }
+    },
+    {
+     "key": "laptops_series",
+     "name": "Seria",
+     "type": "select",
+     "value": {
+      "key": "tuf-gaming",
+      "label": "TUF Gaming"
+     }
+    },
+    {
+     "key": "operatingsystem_laptops",
+     "name": "System operacyjny",
+     "type": "select",
+     "value": {
+      "key": "windows11",
+      "label": "Windows 11"
+     }
+    },
+    {
+     "key": "graphicscardtype_laptops",
+     "name": "Rodzaj karty graficznej",
+     "type": "select",
+     "value": {
+      "key": "dedicated",
+      "label": "Dedykowana"
+     }
+    },
+    {
+     "key": "processorseries_laptops",
+     "name": "Seria procesora",
+     "type": "select",
+     "value": {
+      "key": "intel-core-i5",
+      "label": "Intel Core i5"
+     }
+    },
+    {
+     "key": "ramsize_laptops",
+     "name": "Wielkość pamięci RAM",
+     "type": "select",
+     "value": {
+      "key": "16gb",
+      "label": "16GB"
+     }
+    },
+    {
+     "key": "harddisktype_laptops",
+     "name": "Typ dysku twardego",
+     "type": "select",
+     "value": {
+      "key": "ssd",
+      "label": "SSD"
+     }
+    },
+    {
+     "key": "disksize_laptops",
+     "name": "Wielkość dysku",
+     "type": "select",
+     "value": {
+      "key": "257gb-512gb",
+      "label": "257GB - 512GB"
+     }
+    }
+   ],
+   "key_params": [],
+   "business": false,
+   "user": {
+    "id": 24901353,
+    "created": "2014-08-31T16:43:29+02:00",
+    "other_ads_enabled": true,
+    "name": "Adam",
+    "logo": null,
+    "logo_ad_page": null,
+    "social_network_account_type": "facebook",
+    "photo": null,
+    "banner_mobile": "",
+    "banner_desktop": "",
+    "company_name": "",
+    "about": "",
+    "b2c_business_page": false,
+    "is_online": false,
+    "last_seen": "2026-09-24T15:17:28+02:00",
+    "seller_type": null,
+    "uuid": "a1e1fed7-8b49-4e44-a818-bd34425160be"
+   },
+   "status": "active",
+   "contact": {
+    "name": "Adam",
+    "phone": true,
+    "chat": true,
+    "negotiation": false,
+    "courier": false
+   },
+   "map": {
+    "zoom": 12,
+    "lat": 49.8973,
+    "lon": 19.05976,
+    "radius": 1,
+    "show_detailed": false
+   },
+   "location": {
+    "city": {
+     "id": 1571,
+     "name": "Bestwina",
+     "normalized_name": "bestwina"
+    },
+    "region": {
+     "id": 6,
+     "name": "Śląskie",
+     "normalized_name": "slaskie"
+    }
+   },
+   "photos": [
+    {
+     "id": 11508512117,
+     "filename": "4q25lswak8ld1-PL",
+     "rotation": 0,
+     "width": 4000,
+     "height": 2252,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/4q25lswak8ld1-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11508512118,
+     "filename": "959f6muv4dxh2-PL",
+     "rotation": 0,
+     "width": 4000,
+     "height": 2252,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/959f6muv4dxh2-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11508512119,
+     "filename": "9ld88gx7hae6-PL",
+     "rotation": 0,
+     "width": 4000,
+     "height": 2252,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/9ld88gx7hae6-PL/image;s={width}x{height}"
+    }
+   ],
+   "partner": null,
+   "category": {
+    "id": 3103,
+    "type": "electronics"
+   },
+   "delivery": {
+    "rock": {
+     "offer_id": null,
+     "active": false,
+     "mode": "NotEligible"
+    }
+   },
+   "safedeal": {
+    "weight": 0,
+    "weight_grams": 0,
+    "status": "unactive",
+    "safedeal_blocked": false,
+    "allowed_quantity": []
+   },
+   "shop": {
+    "subdomain": null
+   },
+   "isGpsrAvailable": true,
+   "offer_type": "offer",
+   "protect_phone": true
+  },
+  {
+   "id": 1102737468,
+   "url": "https://www.olx.pl/d/oferta/laptop-acer-nitro-5-an517-51-17-3-i7-9750h-gtx-1650-16-gb-ram-ssd-1-tb-do-gier-gamingowy-CID99-ID1cCYoc.html",
+   "title": "Laptop Acer Nitro 5 AN517-51 17,3\" | i7-9750H | GTX 1650 | 16 GB RAM | SSD 1 TB do gier gamingowy",
+   "last_refresh_time": "2026-10-09T06:17:21+02:00",
+   "created_time": "2026-10-05T06:11:51+02:00",
+   "valid_to_time": "2026-11-04T05:11:52+01:00",
+   "pushup_time": "2026-10-09T06:17:21+02:00",
+   "omnibus_pushup_time": "2026-10-09T06:17:21+02:00",
+   "description": "Sprzedam laptop gamingowy Acer Nitro 5 AN517-51 z ekranem 17,3\". Laptop wyposażony jest w 6-rdzeniowy procesor Intel Core i7 9. generacji, dedykowaną kartę NVIDIA GeForce GTX 1650 oraz 16 GB pamięci RAM.<br />\n<br />\nSpecyfikacja:<br />\nprocesor: Intel Core i7-9750H 2,6 GHz (6 rdzeni / 12 wątków, Turbo do 4,5 GHz)<br />\nkarta graficzna: NVIDIA GeForce GTX 1650 4 GB<br />\nzintegrowana grafika: Intel UHD Graphics 630<br />\npamięć RAM: 16 GB DDR4<br />\ndysk: SSD 1 TB<br />\nekran: 17,3\"<br />\nmodel: Acer Nitro 5 AN517-51<br />\nsystem: Windows 11<br />\n<br />\nLaptop używany, sprawny, nosi normalne ślady użytkowania adekwatne do wieku. <br />\n<br />\nSprzedaję z oryginalnym zasilaczem",
+   "promotion": {
+    "highlighted": true,
+    "urgent": false,
+    "top_ad": true,
+    "options": [
+     "bundle_optimum"
+    ],
+    "b2c_ad_page": false,
+    "premium_ad_page": false
+   },
+   "params": [
+    {
+     "key": "price",
+     "name": "Cena",
+     "type": "price",
+     "value": {
+      "value": 1400,
+      "type": "arranged",
+      "arranged": true,
+      "budget": false,
+      "currency": "PLN",
+      "negotiable": true,
+      "converted_value": null,
+      "previous_value": null,
+      "converted_previous_value": null,
+      "converted_currency": null,
+      "label": "1 400 zł",
+      "previous_label": null
+     }
+    },
+    {
+     "key": "state",
+     "name": "Stan",
+     "type": "select",
+     "value": {
+      "key": "used",
+      "label": "Używane"
+     }
+    },
+    {
+     "key": "screendiagonal_laptops",
+     "name": "Przekątna ekranu",
+     "type": "select",
+     "value": {
+      "key": "17-17-9",
+      "label": "17-17,9\""
+     }
+    },
+    {
+     "key": "laptops_series",
+     "name": "Seria",
+     "type": "select",
+     "value": {
+      "key": "nitro-v",
+      "label": "Nitro V"
+     }
+    },
+    {
+     "key": "operatingsystem_laptops",
+     "name": "System operacyjny",
+     "type": "select",
+     "value": {
+      "key": "windows11",
+      "label": "Windows 11"
+     }
+    },
+    {
+     "key": "processorseries_laptops",
+     "name": "Seria procesora",
+     "type": "select",
+     "value": {
+      "key": "intel-core-i7",
+      "label": "Intel Core i7"
+     }
+    },
+    {
+     "key": "ramsize_laptops",
+     "name": "Wielkość pamięci RAM",
+     "type": "select",
+     "value": {
+      "key": "16gb",
+      "label": "16GB"
+     }
+    },
+    {
+     "key": "harddisktype_laptops",
+     "name": "Typ dysku twardego",
+     "type": "select",
+     "value": {
+      "key": "ssd",
+      "label": "SSD"
+     }
+    },
+    {
+     "key": "disksize_laptops",
+     "name": "Wielkość dysku",
+     "type": "select",
+     "value": {
+      "key": "1tb-and-more",
+      "label": "1TB"
+     }
+    }
+   ],
+   "key_params": [],
+   "business": false,
+   "user": {
+    "id": 34071279,
+    "created": "2015-09-02T11:06:33+02:00",
+    "other_ads_enabled": true,
+    "name": "Maciej",
+    "logo": null,
+    "logo_ad_page": null,
+    "social_network_account_type": null,
+    "photo": null,
+    "banner_mobile": "",
+    "banner_desktop": "",
+    "company_name": "",
+    "about": "",
+    "b2c_business_page": false,
+    "is_online": false,
+    "last_seen": "2026-10-05T06:19:21+02:00",
+    "seller_type": null,
+    "uuid": "ea4fd858-9664-4ad0-8dca-024032e4f24c"
+   },
+   "status": "active",
+   "contact": {
+    "name": "Maciej",
+    "phone": true,
+    "chat": true,
+    "negotiation": true,
+    "courier": false
+   },
+   "map": {
+    "zoom": 13,
+    "lat": 51.23955,
+    "lon": 22.55257,
+    "radius": 6,
+    "show_detailed": false
+   },
+   "location": {
+    "city": {
+     "id": 10119,
+     "name": "Lublin",
+     "normalized_name": "lublin"
+    },
+    "region": {
+     "id": 8,
+     "name": "Lubelskie",
+     "normalized_name": "lubelskie"
+    }
+   },
+   "photos": [
+    {
+     "id": 11548987022,
+     "filename": "ido9g26muqlp3-PL",
+     "rotation": 0,
+     "width": 1500,
+     "height": 2000,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/ido9g26muqlp3-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11548987023,
+     "filename": "p4q4v1ro7asu1-PL",
+     "rotation": 0,
+     "width": 2000,
+     "height": 1500,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/p4q4v1ro7asu1-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11548987024,
+     "filename": "bufxgsraiyhb3-PL",
+     "rotation": 0,
+     "width": 1500,
+     "height": 2000,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/bufxgsraiyhb3-PL/image;s={width}x{height}"
+    }
+   ],
+   "partner": null,
+   "category": {
+    "id": 3101,
+    "type": "electronics"
+   },
+   "delivery": {
+    "rock": {
+     "offer_id": "aaaaaaaa-0000-0000-0000-339296838459",
+     "active": true,
+     "mode": "BuyWithDelivery"
+    }
+   },
+   "safedeal": {
+    "weight": 0,
+    "weight_grams": 0,
+    "status": "unactive",
+    "safedeal_blocked": false,
+    "allowed_quantity": []
+   },
+   "shop": {
+    "subdomain": null
+   },
+   "isGpsrAvailable": true,
+   "offer_type": "offer",
+   "protect_phone": true
+  },
+  {
+   "id": 1102606472,
+   "url": "https://www.olx.pl/d/oferta/laptop-do-gier-acer-i5-9300h-16gb-ddr4-gtx-1650-512gb-nvme-CID99-ID1cCqjm.html",
+   "title": "Laptop do GIER ACER i5-9300H, 16GB DDR4, GTX 1650, 512GB NVMe",
+   "last_refresh_time": "2026-10-04T13:07:50+02:00",
+   "created_time": "2026-10-04T13:04:21+02:00",
+   "valid_to_time": "2026-11-03T12:04:22+01:00",
+   "pushup_time": null,
+   "description": "Witam<br />\n<br />\nMam na sprzedaż mocnego laptopa stworzonego pod gry ACER Nitro 5 AN515 54 series w 100% sprawny. Laptop w ładnym stanie , posiada normalne ślady użytkowania widoczne na zdjęciach . Dzięki grafice GTX 1650 4GB mozna pograć we większość nowszych gier. Gry typu CSGO2 , Fortnite, GTA 5 .. nie stanowią żadnego problemu chodząc bezproblemu płynnie na wysokich detalach.<br />\n<br />\nSPECYFIKACJA:<br />\n<br />\n-procesor i5-9300H<br />\n4 rdzeniowy , jego bazowa częstotliwość wynosi 2,40 GHz, a w trybie Turbo, włączającym się przy intensywnym obciążeniu, osiąga wartość aż 4,10 GHz<br />\n<br />\n-matryca 15,6 cali matowa FULLHD<br />\n<br />\n-16 GB RAM DDR4<br />\n<br />\n-dysk SSD NVMe 512GB<br />\n<br />\n-GTX 1650 4GB<br />\n<br />\n-orginalny zasilacz ACER<br />\n<br />\nLaptop został porządnie wyczyszczony oraz została nałożona nowa pasta wysokiej jakosci na procesorze i karcie graficznej oraz wymienione termopady(mx-4 , 4 lata spokoju).<br />\n<br />\nNa dysku SSD NVMe, został zainstalowany orginalny WINDOWS 11 wraz z wszystkimi aktualizacjami oraz sterownikami ze strony producenta . <br />\n<br />\nLaptop włącza się w parę sekund , nic się nie zacina chodzi bardzo szybko i mimo , że jest to laptop gamingowy ma wysoką kulturę pracy , nie hałasuje chodzi cicho i nie grzeje się .<br />\n<br />\nBateria trzyma spokojnie 2h pracy <br />\n<br />\nWystarczy odpalic i korzystać :)<br />\n<br />\nTEL .699\"284\"112.<br />\n<br />\nInfo<br />\n-możliwy dowóz do 50km od Swarzędza <br />\n-mozliwa wysylka za pobraniem <br />\n<br />\nJesli nie odbieram to prosze pisac sms, oddzwonie ;))<br />\nNa miejscu mozna odpalić i sprawdzić jak śmigac<br />\n<br />\nCENA OSTATECZNA BEZ NEGOCJACJI",
+   "promotion": {
+    "highlighted": false,
+    "urgent": false,
+    "top_ad": true,
+    "options": [
+     "promoted_ad_7"
+    ],
+    "b2c_ad_page": false,
+    "premium_ad_page": false
+   },
+   "params": [
+    {
+     "key": "price",
+     "name": "Cena",
+     "type": "price",
+     "value": {
+      "value": 1300,
+      "type": "price",
+      "arranged": false,
+      "budget": false,
+      "currency": "PLN",
+      "negotiable": false,
+      "converted_value": null,
+      "previous_value": null,
+      "converted_previous_value": null,
+      "converted_currency": null,
+      "label": "1 300 zł",
+      "previous_label": null
+     }
+    },
+    {
+     "key": "state",
+     "name": "Stan",
+     "type": "select",
+     "value": {
+      "key": "used",
+      "label": "Używane"
+     }
+    },
+    {
+     "key": "screendiagonal_laptops",
+     "name": "Przekątna ekranu",
+     "type": "select",
+     "value": {
+      "key": "15-15-9",
+      "label": "15-15,9\""
+     }
+    },
+    {
+     "key": "laptops_series",
+     "name": "Seria",
+     "type": "select",
+     "value": {
+      "key": "nitro-v",
+      "label": "Nitro V"
+     }
+    },
+    {
+     "key": "operatingsystem_laptops",
+     "name": "System operacyjny",
+     "type": "select",
+     "value": {
+      "key": "windows11",
+      "label": "Windows 11"
+     }
+    },
+    {
+     "key": "graphicscardtype_laptops",
+     "name": "Rodzaj karty graficznej",
+     "type": "select",
+     "value": {
+      "key": "dedicated",
+      "label": "Dedykowana"
+     }
+    },
+    {
+     "key": "processorseries_laptops",
+     "name": "Seria procesora",
+     "type": "select",
+     "value": {
+      "key": "intel-core-i5",
+      "label": "Intel Core i5"
+     }
+    },
+    {
+     "key": "ramsize_laptops",
+     "name": "Wielkość pamięci RAM",
+     "type": "select",
+     "value": {
+      "key": "16gb",
+      "label": "16GB"
+     }
+    },
+    {
+     "key": "harddisktype_laptops",
+     "name": "Typ dysku twardego",
+     "type": "select",
+     "value": {
+      "key": "ssd",
+      "label": "SSD"
+     }
+    },
+    {
+     "key": "disksize_laptops",
+     "name": "Wielkość dysku",
+     "type": "select",
+     "value": {
+      "key": "257gb-512gb",
+      "label": "257GB - 512GB"
+     }
+    }
+   ],
+   "key_params": [],
+   "business": false,
+   "user": {
+    "id": 354441963,
+    "created": "2019-02-12T17:58:19+01:00",
+    "other_ads_enabled": true,
+    "name": "Sebastian22",
+    "logo": null,
+    "logo_ad_page": null,
+    "social_network_account_type": null,
+    "photo": null,
+    "banner_mobile": "",
+    "banner_desktop": "",
+    "company_name": "",
+    "about": "",
+    "b2c_business_page": false,
+    "is_online": false,
+    "last_seen": "2026-10-04T17:56:04+02:00",
+    "seller_type": null,
+    "uuid": "9d8621fd-c62a-4e80-8fa5-503fae64d1d2"
+   },
+   "status": "active",
+   "contact": {
+    "name": "Sebastian22",
+    "phone": true,
+    "chat": true,
+    "negotiation": false,
+    "courier": false
+   },
+   "map": {
+    "zoom": 12,
+    "lat": 52.38865,
+    "lon": 17.07588,
+    "radius": 1,
+    "show_detailed": false
+   },
+   "location": {
+    "city": {
+     "id": 59565,
+     "name": "Zalasewo",
+     "normalized_name": "zalasewo"
+    },
+    "region": {
+     "id": 1,
+     "name": "Wielkopolskie",
+     "normalized_name": "wielkopolskie"
+    }
+   },
+   "photos": [
+    {
+     "id": 11547789750,
+     "filename": "guz5b34c4yzp-PL",
+     "rotation": 0,
+     "width": 868,
+     "height": 1156,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/guz5b34c4yzp-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11547789751,
+     "filename": "71qr2k5gp61j1-PL",
+     "rotation": 0,
+     "width": 868,
+     "height": 1156,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/71qr2k5gp61j1-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11547789752,
+     "filename": "p5yzabfv36nb-PL",
+     "rotation": 0,
+     "width": 868,
+     "height": 1156,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/p5yzabfv36nb-PL/image;s={width}x{height}"
+    }
+   ],
+   "partner": null,
+   "category": {
+    "id": 3101,
+    "type": "electronics"
+   },
+   "delivery": {
+    "rock": {
+     "offer_id": null,
+     "active": false,
+     "mode": "NotEligible"
+    }
+   },
+   "safedeal": {
+    "weight": 0,
+    "weight_grams": 0,
+    "status": "unactive",
+    "safedeal_blocked": false,
+    "allowed_quantity": []
+   },
+   "shop": {
+    "subdomain": null
+   },
+   "isGpsrAvailable": true,
+   "offer_type": "offer",
+   "protect_phone": false
+  },
+  {
+   "id": 1103596779,
+   "url": "https://www.olx.pl/d/oferta/acer-nitro-5-i5-10300h-gtx-1650ti-fullhd-144hz-15-6-dobry-stan-laptop-gamingowy-uszkodzony-CID99-ID1cGzV3.html",
+   "title": "Acer Nitro 5 i5-10300H GTX 1650Ti FullHD 144Hz 15,6\" Dobry stan Laptop Gamingowy uszkodzony",
+   "last_refresh_time": "2026-10-08T22:25:49+02:00",
+   "created_time": "2026-10-08T22:23:05+02:00",
+   "valid_to_time": "2026-11-07T21:23:05+01:00",
+   "pushup_time": null,
+   "description": "Sprzedam uszkodzony laptop gamingowy Acer Nitro 5<br />\n<br />\nLaptop posiada między innymi:<br />\n- Inetl i5-10300H<br />\n- GTX 1650 TI 4GB GDDR6<br />\n- matryca FullHD 144Hz 15,6\"<br />\n- podświetlana klawiatura<br />\n<br />\nNie był diagnozowany w serwisie. <br />\nBrak dysku i ramu<br />\n<br />\nLaptop reaguje na ładowarkę, włącza się, klawiatura się świeci, dalej nic się nie dzieje.<br />\n<br />\nStan wizualny widoczny na zdjęciach.<br />\n<br />\nW zestawie sam laptop.<br />\n<br />\nMożliwy odbiór osobisty Kraków, lub wysyłka OLX. <br />\n<br />\nDla chętnej osoby mogę dorzucić zasilacz (proszę pytać przed zakupem)",
+   "promotion": {
+    "highlighted": false,
+    "urgent": false,
+    "top_ad": false,
+    "options": [],
+    "b2c_ad_page": false,
+    "premium_ad_page": false
+   },
+   "params": [
+    {
+     "key": "price",
+     "name": "Cena",
+     "type": "price",
+     "value": {
+      "value": 600,
+      "type": "price",
+      "arranged": false,
+      "budget": false,
+      "currency": "PLN",
+      "negotiable": false,
+      "converted_value": null,
+      "previous_value": null,
+      "converted_previous_value": null,
+      "converted_currency": null,
+      "label": "600 zł",
+      "previous_label": null
+     }
+    },
+    {
+     "key": "state",
+     "name": "Stan",
+     "type": "select",
+     "value": {
+      "key": "damaged",
+      "label": "Uszkodzone"
+     }
+    },
+    {
+     "key": "screendiagonal_laptops",
+     "name": "Przekątna ekranu",
+     "type": "select",
+     "value": {
+      "key": "15-15-9",
+      "label": "15-15,9\""
+     }
+    },
+    {
+     "key": "laptops_series",
+     "name": "Seria",
+     "type": "select",
+     "value": {
+      "key": "nitro-5-16-17",
+      "label": "Nitro 5 / 16 / 17"
+     }
+    },
+    {
+     "key": "operatingsystem_laptops",
+     "name": "System operacyjny",
+     "type": "select",
+     "value": {
+      "key": "lack",
+      "label": "Brak"
+     }
+    },
+    {
+     "key": "graphicscardtype_laptops",
+     "name": "Rodzaj karty graficznej",
+     "type": "select",
+     "value": {
+      "key": "dedicated",
+      "label": "Dedykowana"
+     }
+    },
+    {
+     "key": "processorseries_laptops",
+     "name": "Seria procesora",
+     "type": "select",
+     "value": {
+      "key": "intel-core-i5",
+      "label": "Intel Core i5"
+     }
+    },
+    {
+     "key": "ramsize_laptops",
+     "name": "Wielkość pamięci RAM",
+     "type": "select",
+     "value": {
+      "key": "others",
+      "label": "Inna"
+     }
+    },
+    {
+     "key": "harddisktype_laptops",
+     "name": "Typ dysku twardego",
+     "type": "select",
+     "value": {
+      "key": "lack",
+      "label": "Brak"
+     }
+    }
+   ],
+   "key_params": [],
+   "business": false,
+   "user": {
+    "id": 2554276802,
+    "created": "2026-10-08T18:35:59+02:00",
+    "other_ads_enabled": true,
+    "name": "Krzysztof",
+    "logo": null,
+    "logo_ad_page": null,
+    "social_network_account_type": null,
+    "photo": null,
+    "banner_mobile": "",
+    "banner_desktop": "",
+    "company_name": "",
+    "about": "",
+    "b2c_business_page": false,
+    "is_online": false,
+    "last_seen": "2026-10-09T15:57:29+02:00",
+    "seller_type": null,
+    "uuid": "e295b414-0061-70dd-0413-ae8aaa5dd825"
+   },
+   "status": "active",
+   "contact": {
+    "name": "Krzysztof",
+    "phone": true,
+    "chat": true,
+    "negotiation": false,
+    "courier": false
+   },
+   "map": {
+    "zoom": 13,
+    "lat": 50.02063,
+    "lon": 19.93143,
+    "radius": 7,
+    "show_detailed": false
+   },
+   "location": {
+    "city": {
+     "id": 8959,
+     "name": "Kraków",
+     "normalized_name": "krakow"
+    },
+    "district": {
+     "id": 265,
+     "name": "Łagiewniki-Borek Fałęcki"
+    },
+    "region": {
+     "id": 4,
+     "name": "Małopolskie",
+     "normalized_name": "malopolskie"
+    }
+   },
+   "photos": [
+    {
+     "id": 11567239204,
+     "filename": "igyfix0qoss2-PL",
+     "rotation": 0,
+     "width": 5712,
+     "height": 3213,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/igyfix0qoss2-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11567239205,
+     "filename": "qn8f9loh01ef2-PL",
+     "rotation": 0,
+     "width": 5712,
+     "height": 3213,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/qn8f9loh01ef2-PL/image;s={width}x{height}"
+    },
+    {
+     "id": 11567239207,
+     "filename": "kb0uu2hwgvt23-PL",
+     "rotation": 0,
+     "width": 5712,
+     "height": 3213,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/kb0uu2hwgvt23-PL/image;s={width}x{height}"
+    }
+   ],
+   "partner": null,
+   "category": {
+    "id": 3101,
+    "type": "electronics"
+   },
+   "delivery": {
+    "rock": {
+     "offer_id": "aaaaaaaa-0000-0000-0000-809049676482",
+     "active": true,
+     "mode": "BuyWithDelivery"
+    }
+   },
+   "safedeal": {
+    "weight": 0,
+    "weight_grams": 0,
+    "status": "unactive",
+    "safedeal_blocked": false,
+    "allowed_quantity": []
+   },
+   "shop": {
+    "subdomain": null
+   },
+   "isGpsrAvailable": true,
+   "offer_type": "offer",
+   "protect_phone": true
+  },
+  {
+   "id": 1055509373,
+   "url": "https://www.olx.pl/d/oferta/acert-nitro-5-uszkodzony-CID99-ID19qOcJ.html",
+   "title": "Acert Nitro 5 uszkodzony",
+   "last_refresh_time": "2026-09-29T12:42:30+02:00",
+   "created_time": "2026-02-16T15:31:48+01:00",
+   "valid_to_time": "2026-10-29T11:42:28+01:00",
+   "pushup_time": null,
+   "description": "Uszkodzony laptop Acert Nitro 5 z 15-calowym ekranem. Sprzęt idealny dla osób, które potrafią naprawić proste usterki. Doskonała okazja dla osób poszukujących taniego, ale potężnego komputera do gier.<br />\n<br />\nSprzedaję bez dysku. Ze sprawnym zasilaczem.<br />\n<br />\nDiagnozowany w serwisie. Uszkodzenie płyty głównej - teoretycznie naprawa możliwa, ale nie umieli sobie z tym poradzić lub im się nie chciało. Po włączeniu zaświecają się klawisze ale komputer nie wstaje.<br />\n<br />\n-Intel Core i5 8th gen<br />\n-NVIDIA GTX 1650<br />\n-8GB RAM",
+   "promotion": {
+    "highlighted": false,
+    "urgent": false,
+    "top_ad": false,
+    "options": [],
+    "b2c_ad_page": false,
+    "premium_ad_page": false
+   },
+   "params": [
+    {
+     "key": "price",
+     "name": "Cena",
+     "type": "price",
+     "value": {
+      "value": 600,
+      "type": "price",
+      "arranged": false,
+      "budget": false,
+      "currency": "PLN",
+      "negotiable": false,
+      "converted_value": null,
+      "previous_value": null,
+      "converted_previous_value": null,
+      "converted_currency": null,
+      "label": "600 zł",
+      "previous_label": null
+     }
+    },
+    {
+     "key": "state",
+     "name": "Stan",
+     "type": "select",
+     "value": {
+      "key": "damaged",
+      "label": "Uszkodzone"
+     }
+    },
+    {
+     "key": "screendiagonal_laptops",
+     "name": "Przekątna ekranu",
+     "type": "select",
+     "value": {
+      "key": "15-15-9",
+      "label": "15-15,9\""
+     }
+    },
+    {
+     "key": "processorseries_laptops",
+     "name": "Seria procesora",
+     "type": "select",
+     "value": {
+      "key": "intel-core-i5",
+      "label": "Intel Core i5"
+     }
+    },
+    {
+     "key": "ramsize_laptops",
+     "name": "Wielkość pamięci RAM",
+     "type": "select",
+     "value": {
+      "key": "6gb-12gb",
+      "label": "6GB - 12GB"
+     }
+    },
+    {
+     "key": "harddisktype_laptops",
+     "name": "Typ dysku twardego",
+     "type": "select",
+     "value": {
+      "key": "lack",
+      "label": "Brak"
+     }
+    }
+   ],
+   "key_params": [],
+   "business": false,
+   "user": {
+    "id": 84196749,
+    "created": "2018-02-03T15:44:13+01:00",
+    "other_ads_enabled": true,
+    "name": "Piotr",
+    "logo": null,
+    "logo_ad_page": null,
+    "social_network_account_type": "facebook",
+    "photo": "https://img-resizer.prd.01.eu-west-1.eu.olx.org/img-eu-olxpl-production/658013419_1_100x100_rev018.jpg",
+    "banner_mobile": "",
+    "banner_desktop": "",
+    "company_name": "",
+    "about": "",
+    "b2c_business_page": false,
+    "is_online": false,
+    "last_seen": "2026-09-23T18:49:34+02:00",
+    "seller_type": null,
+    "uuid": "0f316ba9-fcfe-4f19-9a05-eff0961e21ec"
+   },
+   "status": "active",
+   "contact": {
+    "name": "Piotr",
+    "phone": true,
+    "chat": true,
+    "negotiation": false,
+    "courier": false
+   },
+   "map": {
+    "zoom": 13,
+    "lat": 50.08325,
+    "lon": 19.96924,
+    "radius": 7,
+    "show_detailed": false
+   },
+   "location": {
+    "city": {
+     "id": 8959,
+     "name": "Kraków",
+     "normalized_name": "krakow"
+    },
+    "district": {
+     "id": 277,
+     "name": "Prądnik Czerwony"
+    },
+    "region": {
+     "id": 4,
+     "name": "Małopolskie",
+     "normalized_name": "malopolskie"
+    }
+   },
+   "photos": [
+    {
+     "id": 10622783532,
+     "filename": "isoc8jyglht81-PL",
+     "rotation": 0,
+     "width": 4032,
+     "height": 3024,
+     "link": "https://ireland.apollo.olxcdn.com:443/v1/files/isoc8jyglht81-PL/image;s={width}x{height}"
+    }
+   ],
+   "partner": null,
+   "category": {
+    "id": 3101,
+    "type": "electronics"
+   },
+   "delivery": {
+    "rock": {
+     "offer_id": "aaaaaaaa-0000-0000-0000-728093551462",
+     "active": true,
+     "mode": "BuyWithDelivery"
+    }
+   },
+   "safedeal": {
+    "weight": 0,
+    "weight_grams": 0,
+    "status": "unactive",
+    "safedeal_blocked": false,
+    "allowed_quantity": []
+   },
+   "shop": {
+    "subdomain": null
+   },
+   "isGpsrAvailable": true,
+   "offer_type": "offer",
+   "protect_phone": true
+  }
+ ],
+ "metadata": {
+  "total_elements": 173,
+  "visible_total_count": 173,
+  "promoted": [
+   0,
+   1,
+   2
+  ],
+  "search_id": "C13E8DF6180E1610C6B7870A9D7FB43B",
+  "source": {
+   "promoted": [
+    0,
+    1,
+    2
+   ],
+   "organic": [
+    3,
+    4
+   ]
+  }
+ },
+ "links": {
+  "self": {
+   "href": "https://www.olx.pl/api/v1/offers?offset=0&limit=40&query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400"
+  },
+  "next": {
+   "href": "https://www.olx.pl/api/v1/offers?offset=40&limit=40&query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400"
+  },
+  "first": {
+   "href": "https://www.olx.pl/api/v1/offers?offset=0&limit=40&query=gtx+1650+laptop&sort_by=filter_float_price%3Aasc&filter_float_price%3Afrom=600&filter_float_price%3Ato=1400"
+  }
+ }
+}

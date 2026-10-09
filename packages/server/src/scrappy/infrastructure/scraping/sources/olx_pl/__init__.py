@@ -1,0 +1,1 @@
+"""OLX.pl site recipe."""

@@ -1,0 +1,25 @@
+services:
+  worker:
+    build: packages/server
+    env_file: .env
+    environment:
+      SCRAPPY_DATA_DIR: /data
+      SCRAPPY_CONFIG_DIR: /config
+    volumes:
+      - ./data:/data
+      - ./packages/server/config:/config:ro
+    restart: unless-stopped
+    # default command: `scrappy worker`
+
+  # One-off commands: docker compose --profile tools run --rm cli version
+  cli:
+    build: packages/server
+    profiles: ["tools"]
+    env_file: .env
+    environment:
+      SCRAPPY_DATA_DIR: /data
+      SCRAPPY_CONFIG_DIR: /config
+    volumes:
+      - ./data:/data
+      - ./packages/server/config:/config:ro
+    command: ["--help"]
