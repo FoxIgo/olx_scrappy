@@ -339,3 +339,21 @@ component_benchmarks = Table(
     Column("fetched_at", UtcDateTime, nullable=False),
     _fk(["component_id"], "components", ["id"]),
 )
+
+offer_components = Table(
+    "offer_components",
+    metadata,
+    Column("source", String(64), primary_key=True),
+    Column("external_id", String(255), primary_key=True),
+    Column("kind", String(8), primary_key=True),
+    Column("component_id", String(160)),
+    Column("raw_text", Text, nullable=False),
+    Column("confidence", Float, nullable=False),
+    Column("method", String(16), nullable=False),
+    Column("resolver_version", Integer, nullable=False),
+    Column("resolved_at", UtcDateTime, nullable=False),
+    _fk(["source", "external_id"], "offers", ["source", "external_id"]),
+    _fk(["component_id"], "components", ["id"]),
+    Index("ix_offer_components_component_id", "component_id"),
+    Index("ix_offer_components_method", "kind", "method"),
+)

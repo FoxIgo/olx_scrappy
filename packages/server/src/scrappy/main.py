@@ -42,6 +42,11 @@ from scrappy.application.ports.system import CategoryProvider, Clock, IdGenerato
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
 from scrappy.application.use_cases.analytics import QueryUseCases, build_query_use_cases
 from scrappy.application.use_cases.benchmarks import ImportBenchmarks, ListComponents
+from scrappy.application.use_cases.component_resolution import (
+    AddComponentAlias,
+    ComponentResolutionStatus,
+    ResolveComponents,
+)
 from scrappy.application.use_cases.extraction import (
     ExtractionStatus,
     ForceReextract,
@@ -153,6 +158,9 @@ class Container:
     extraction_config_source: str
     import_benchmarks: ImportBenchmarks
     list_components: ListComponents
+    resolve_components: ResolveComponents
+    component_resolution_status: ComponentResolutionStatus
+    add_component_alias: AddComponentAlias
     log_level: str
     worker_poll_interval: float
     _fetchers: list[PageFetcher] = field(default_factory=list[PageFetcher], repr=False)
@@ -338,6 +346,9 @@ async def build_app(
             clock=clock,
         ),
         list_components=ListComponents(uow=uow),
+        resolve_components=ResolveComponents(uow=uow, clock=clock),
+        component_resolution_status=ComponentResolutionStatus(uow=uow),
+        add_component_alias=AddComponentAlias(uow=uow),
         log_level=settings.log_level,
         worker_poll_interval=settings.worker_poll_interval,
         _fetchers=fetchers,

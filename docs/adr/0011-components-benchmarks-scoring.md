@@ -59,6 +59,47 @@ whose raw CPU/GPU text has no up-to-date link.
 - Partial text ("i7", "GTX") stays `unresolved`. It is not guessed.
 - Bumping the resolver version re-resolves without re-extracting.
 
+Implementation notes (slice 3, done):
+
+- **Storage.** `offer_components` (migration 0004), primary key `(offer, kind)`:
+  `component_id` (null when unresolved), `raw_text` (what was resolved), `confidence`
+  0..1, `method`, `resolver_version`, `resolved_at`. Unresolved texts get a row too, so the
+  backlog shrinks and `components status` can list them.
+- **Backlog = a query** over the *current* extraction of each offer (any category with a
+  `cpu`/`gpu` attribute): non-blank raw text and no link, or a link with a different
+  `raw_text`, or one with an older `resolver_version`. `RESOLVER_VERSION`
+  (`domain/component/resolution.py`) is bumped when the rules change. `ResolveComponents`
+  works in chunks, one transaction each.
+- **Matcher** (`ComponentMatcher`, pure). Order: (1) manual alias that points at a part
+  other than the text's own slug (a human decision wins; seeded aliases only repeat the
+  slug match), (2) text without a model number is unresolved ("i7", "GTX", "Intel",
+  "integrated", "Iris Xe", "brak"), (3) exact slug, (4) fuzzy, always with the same model
+  number, (5) unresolved. Method `llm` exists in the enum and in the
+  `ComponentLlmFallback` port (candidate list in, id out) but nothing calls it yet.
+  **Follow-up:** an LLM pass over the leftover texts, picking from a short candidate list
+  (same-model-number components), never inventing ids.
+- **Laptop variant.** Extractions say "RTX 4060" (the prompt strips "Laptop GPU") but a
+  laptop has the mobile part, so for laptop offers (`MOBILE_CATEGORIES`) the variant order
+  is `-laptop`, then the plain slug, then `-maxq`/`-laptop-maxq`; other categories prefer the
+  plain slug. A text that already says Laptop/Max-Q is taken literally. Chosen variants
+  score confidence 0.95, literal matches 1.0. Max-Q is a lower-power variant, so it is
+  chosen only when the text says so (resolver v2); for names with no `-laptop` row
+  (GTX 1650) the plain row wins, whose Blender score mixes desktop and laptop runs.
+  CPUs: a laptop offer whose number matches a desktop part (`i7-12700`) is moved to its
+  only mobile sibling (`i7-12700H`), fuzzy 0.8.
+- **Memory size variants** (`rtx-3050-6gb-laptop` vs `rtx-3050-laptop`): the extraction's
+  `vram_gb` selects the sized row when it exists, otherwise the plain one. "6GB" in the
+  text itself wins over `vram_gb`.
+- **Fuzzy rules** (all keep the model number, never cross Ti/Super/XT, ambiguous ties stay
+  unresolved): Blender's "w/ Radeon 780M" tail is ignored (`Ryzen 7 7840HS`); Intel `HF`
+  matches `H`; a bare NVIDIA number (`1660ti`, `3060`) matches when one family has it; a
+  close slug (difflib ratio >= 0.8, unique by a 0.1 margin) with the same model token.
+  Text cleanup: `4 GB` -> `4GB`, `6/12` core counts and clock speeds are dropped.
+- **Human loop.** `scrappy components status` lists the most frequent unresolved texts;
+  `scrappy components alias add <cpu|gpu> "<raw text>" <component-id>` stores the alias
+  and marks the links of that text stale, so the next `components resolve` redoes exactly
+  those offers.
+
 ### 4. Benchmark source: Blender Open Data
 
 | Source | Verdict |

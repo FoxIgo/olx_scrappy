@@ -18,6 +18,11 @@ from scrappy.application.ports.system import Clock
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
 from scrappy.application.use_cases.analytics import QueryUseCases
 from scrappy.application.use_cases.benchmarks import ImportBenchmarks, ListComponents
+from scrappy.application.use_cases.component_resolution import (
+    AddComponentAlias,
+    ComponentResolutionStatus,
+    ResolveComponents,
+)
 from scrappy.application.use_cases.extraction import (
     ExtractionStatus,
     ForceReextract,
@@ -77,6 +82,12 @@ class Services(Protocol):
     def import_benchmarks(self) -> ImportBenchmarks: ...
     @property
     def list_components(self) -> ListComponents: ...
+    @property
+    def resolve_components(self) -> ResolveComponents: ...
+    @property
+    def component_resolution_status(self) -> ComponentResolutionStatus: ...
+    @property
+    def add_component_alias(self) -> AddComponentAlias: ...
     @property
     def log_level(self) -> str: ...
     @property

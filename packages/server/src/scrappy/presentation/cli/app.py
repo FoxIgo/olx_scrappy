@@ -11,6 +11,7 @@ from typing import Annotated
 import typer
 
 from scrappy.presentation.cli.benchmarks_cmds import benchmarks_app
+from scrappy.presentation.cli.components_cmds import components_app
 from scrappy.presentation.cli.extract_cmds import extract_app
 from scrappy.presentation.cli.misc_cmds import db_app, worker
 from scrappy.presentation.cli.offers_cmds import offers_app
@@ -26,6 +27,7 @@ app.add_typer(offers_app, name="offers")
 app.add_typer(extract_app, name="extract")
 app.add_typer(db_app, name="db")
 app.add_typer(benchmarks_app, name="benchmarks")
+app.add_typer(components_app, name="components")
 app.add_typer(q_app, name="q")
 app.command("run")(run)
 app.command("resume")(resume)
