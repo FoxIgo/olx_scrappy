@@ -1,0 +1,23 @@
+{
+  "skill_name": "scrappy-data",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "which of the scraped gtx laptops are actually good deals right now? i want min 16gb ram, and tell me why each one is cheap - dont want broken stuff unless its really cheap",
+      "expected_output": "A short ranked list of underpriced relevant laptops with >=16GB RAM, each with link, price, comparison group median and ratio, group size, and caveats read from the description (damage, for parts). Mentions sample-size limits.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "how much more do 16GB laptops cost vs 8GB ones in my gtx-laptops search? also which GPUs show up the most and is RTX 3050 worth the extra money compared to gtx 1650?",
+      "expected_output": "Median (and n) price by RAM group and by GPU, GPU value counts, and an honest answer on RTX 3050 vs GTX 1650: if the data has no (or too few) RTX 3050 offers, it says so instead of inventing a comparison. Caveats about sample sizes and excluded offers.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "quick sanity check of my scrappy data before i rely on it: did the last runs work, are attributes extracted for everything, which fields are often empty, and did any prices drop?",
+      "expected_output": "Run status summary, extraction coverage (done/pending/failed), per-attribute null rates, list of price drops with old->new values, and concrete next steps for any problem found.",
+      "files": []
+    }
+  ]
+}
