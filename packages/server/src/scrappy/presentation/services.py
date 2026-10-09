@@ -14,6 +14,7 @@ from typing import Protocol
 from scrappy.application.jobs.dispatcher import JobDispatcher
 from scrappy.application.ports.system import Clock
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
+from scrappy.application.use_cases.analytics import QueryUseCases
 from scrappy.application.use_cases.extractions import RequeueExtractions
 from scrappy.application.use_cases.finalize_run import FinalizeRun
 from scrappy.application.use_cases.list_offers import ListOffers
@@ -42,6 +43,11 @@ class Services(Protocol):
     def list_offers(self) -> ListOffers: ...
     @property
     def set_override(self) -> SetRelevanceOverride: ...
+    @property
+    def q(self) -> QueryUseCases:
+        """The read-only agent query interface (``scrappy q``)."""
+        ...
+
     @property
     def has_extractor(self) -> bool: ...
     @property

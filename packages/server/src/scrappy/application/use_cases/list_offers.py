@@ -8,7 +8,7 @@ from scrappy.application.errors import InvalidRequestError, NotFoundError
 from scrappy.application.ports.queries import OfferFilter, OfferListItem, OfferQueries
 from scrappy.application.ports.system import CategoryProvider
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
-from scrappy.domain.category import CategoryName
+from scrappy.domain.category import Category, CategoryName
 from scrappy.domain.extraction import AttributePredicate, Comparison
 from scrappy.domain.shared import InvalidValueError
 
@@ -49,23 +49,31 @@ class ListOffers:
         category = (await self._categories.catalog()).get(category_name)
         if category is None:
             raise InvalidRequestError(f"unknown category {category_name}")
-        typed: list[AttributePredicate] = []
-        for predicate in query.attributes:
-            spec = category.attribute(predicate.attribute)
-            if spec is None:
-                raise InvalidRequestError(
-                    f"category {category_name} has no attribute {predicate.attribute!r}"
-                )
-            try:
-                value = spec.coerce(predicate.value)
-            except InvalidValueError as error:
-                raise InvalidRequestError(str(error)) from error
-            ordering = predicate.op in (Comparison.LT, Comparison.LE, Comparison.GT, Comparison.GE)
-            if ordering and isinstance(value, bool | str):
-                raise InvalidRequestError(
-                    f"{predicate.op.value} needs a numeric attribute ({predicate.attribute!r})"
-                )
-            if predicate.op is Comparison.CONTAINS and not isinstance(value, str):
-                raise InvalidRequestError(f"~ needs a text attribute ({predicate.attribute!r})")
-            typed.append(AttributePredicate(predicate.attribute, predicate.op, value))
-        return tuple(typed)
+        return typed_predicates(category, query.attributes)
+
+
+def typed_predicates(
+    category: Category, predicates: tuple[AttributePredicate, ...]
+) -> tuple[AttributePredicate, ...]:
+    """Coerce raw predicate values to the attribute types of ``category`` and reject unknown
+    attributes and operators that do not fit the type (shared with the ``q`` use cases)."""
+    typed: list[AttributePredicate] = []
+    for predicate in predicates:
+        spec = category.attribute(predicate.attribute)
+        if spec is None:
+            raise InvalidRequestError(
+                f"category {category.name} has no attribute {predicate.attribute!r}"
+            )
+        try:
+            value = spec.coerce(predicate.value)
+        except InvalidValueError as error:
+            raise InvalidRequestError(str(error)) from error
+        ordering = predicate.op in (Comparison.LT, Comparison.LE, Comparison.GT, Comparison.GE)
+        if ordering and isinstance(value, bool | str):
+            raise InvalidRequestError(
+                f"{predicate.op.value} needs a numeric attribute ({predicate.attribute!r})"
+            )
+        if predicate.op is Comparison.CONTAINS and not isinstance(value, str):
+            raise InvalidRequestError(f"~ needs a text attribute ({predicate.attribute!r})")
+        typed.append(AttributePredicate(predicate.attribute, predicate.op, value))
+    return tuple(typed)

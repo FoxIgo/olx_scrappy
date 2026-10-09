@@ -36,6 +36,7 @@ from scrappy.application.ports.listing_source import ListingSource
 from scrappy.application.ports.queries import OfferQueries
 from scrappy.application.ports.system import CategoryProvider, Clock, IdGenerator
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
+from scrappy.application.use_cases.analytics import QueryUseCases, build_query_use_cases
 from scrappy.application.use_cases.extractions import RequeueExtractions
 from scrappy.application.use_cases.finalize_run import FinalizeRun
 from scrappy.application.use_cases.list_offers import ListOffers
@@ -49,6 +50,7 @@ from scrappy.infrastructure.config.settings import Settings
 from scrappy.infrastructure.config.sources import SourceConfig, SourcesConfig, load_sources
 from scrappy.infrastructure.extraction.openrouter import OpenRouterAttributeExtractor
 from scrappy.infrastructure.persistence import (
+    SqlAnalyticsQueries,
     SqlOfferQueries,
     create_engine,
     sql_unit_of_work_factory,
@@ -112,6 +114,7 @@ class Container:
     requeue_extractions: RequeueExtractions
     list_offers: ListOffers
     set_override: SetRelevanceOverride
+    q: QueryUseCases
     has_extractor: bool
     log_level: str
     worker_poll_interval: float
@@ -278,6 +281,9 @@ async def build_app(
         ),
         list_offers=ListOffers(uow=uow, queries=queries, categories=category_provider),
         set_override=SetRelevanceOverride(uow=uow),
+        q=build_query_use_cases(
+            uow=uow, queries=SqlAnalyticsQueries(engine), categories=category_provider
+        ),
         has_extractor=extractor is not None,
         log_level=settings.log_level,
         worker_poll_interval=settings.worker_poll_interval,

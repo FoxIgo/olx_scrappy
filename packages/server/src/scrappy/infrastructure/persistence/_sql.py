@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
-from sqlalchemy import CursorResult, Table
+from sqlalchemy import ColumnElement, CursorResult, Table, func, literal
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -49,3 +49,15 @@ async def insert_ignore(
 
 def chunks[T](items: Sequence[T], size: int = CHUNK) -> list[Sequence[T]]:
     return [items[i : i + size] for i in range(0, len(items), size)]
+
+
+def json_attribute(column: Any, name: str, dialect: str) -> ColumnElement[Any]:
+    """SQL expression for ``column[name]`` of a JSON object column, NULL when the key is
+    absent or the JSON value is null. The ONLY place that knows how each database reads JSON
+    (the attribute name is bound as a parameter, never interpolated)."""
+    if dialect == "sqlite":
+        return func.json_extract(column, literal(f'$."{name}"'))
+    if dialect == "postgresql":
+        # untested against a live server: ->> returns text, NULL for JSON null / missing key
+        return column.op("->>")(name)
+    raise NotImplementedError(f"unsupported database dialect {dialect!r}")

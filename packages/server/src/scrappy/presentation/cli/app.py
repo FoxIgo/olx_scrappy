@@ -12,6 +12,7 @@ import typer
 
 from scrappy.presentation.cli.misc_cmds import db_app, extract_app, worker
 from scrappy.presentation.cli.offers_cmds import offers_app
+from scrappy.presentation.cli.q_cmds import q_app
 from scrappy.presentation.cli.run_cmds import resume, run, runs_app
 from scrappy.presentation.cli.search_cmds import search_app
 from scrappy.presentation.services import CliContext
@@ -22,6 +23,7 @@ app.add_typer(runs_app, name="runs")
 app.add_typer(offers_app, name="offers")
 app.add_typer(extract_app, name="extract")
 app.add_typer(db_app, name="db")
+app.add_typer(q_app, name="q")
 app.command("run")(run)
 app.command("resume")(resume)
 app.command("worker")(worker)

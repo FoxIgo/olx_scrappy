@@ -6,8 +6,10 @@ Typical wiring (``main.py``)::
     engine = create_engine(url)               # sqlite+aiosqlite:///... (WAL, FKs, busy timeout)
     uow = sql_unit_of_work_factory(engine)    # the UnitOfWorkFactory
     queries = SqlOfferQueries(engine)         # the OfferQueries port
+    analytics = SqlAnalyticsQueries(engine)   # the AnalyticsQueries port (scrappy q)
 """
 
+from scrappy.infrastructure.persistence.analytics import SqlAnalyticsQueries
 from scrappy.infrastructure.persistence.engine import create_engine, sqlite_url
 from scrappy.infrastructure.persistence.migrate import (
     upgrade_to_head,
@@ -20,6 +22,7 @@ from scrappy.infrastructure.persistence.unit_of_work import (
 )
 
 __all__ = [
+    "SqlAnalyticsQueries",
     "SqlOfferQueries",
     "SqlUnitOfWork",
     "create_engine",
