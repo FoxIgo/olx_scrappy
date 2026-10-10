@@ -8,8 +8,9 @@ Usage:
 
 It finds the Python project that defines the `scrappy` console script (env var
 SCRAPPY_PROJECT overrides the search), then runs it through `uv run`, so the agent never
-has to know where the package lives or activate a virtualenv. The command's stdout,
-stderr and exit code are passed through unchanged.
+has to know where the package lives or activate a virtualenv. It runs from the project
+directory; the app resolves its data folder itself (packages/server/data, one database,
+wherever this is run from). The command's stdout, stderr and exit code are passed through unchanged.
 """
 
 from __future__ import annotations
@@ -73,17 +74,12 @@ def main(argv: list[str]) -> int:
         sys.exit(__doc__)
 
     project = find_project()
-    if "SCRAPPY_CONFIG_DIR" not in env and (project / "config").is_dir():
-        env["SCRAPPY_CONFIG_DIR"] = str((project / "config").resolve())
-    if "SCRAPPY_DATA_DIR" not in env:
-        for root_cand in (project.parent, project.parent.parent, project):
-            if (root_cand / "data" / "scrappy.db").is_file():
-                env["SCRAPPY_DATA_DIR"] = str((root_cand / "data").resolve())
-                break
-
+    # Do not set SCRAPPY_DATA_DIR here: the app anchors relative data/config paths to the
+    # server package itself, and an explicit value silently creates a second database.
     proc = subprocess.run(
         ["uv", "run", "--project", str(project), "--quiet", "scrappy", *command],
         env=env,
+        cwd=project,
         check=False,
     )
     return proc.returncode

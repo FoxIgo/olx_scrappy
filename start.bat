@@ -13,9 +13,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-rem Settings use relative paths (.env, config\), so run from the server package.
-rem Data lives at the repo root so it survives package changes; .env can override it.
-if not defined SCRAPPY_DATA_DIR set "SCRAPPY_DATA_DIR=%ROOT%data"
+rem Relative paths (.env, config\, data\) are resolved against packages\server by the app itself,
+rem wherever this is run from, so there is exactly one database: packages\server\data\scrappy.db.
+rem Do not set SCRAPPY_DATA_DIR here: it silently creates a second database. Override it in .env.
 set "PYTHONUTF8=1"
 
 pushd "%SERVER%" || exit /b 1
@@ -39,7 +39,7 @@ exit /b %RC%
 
 :menu
 echo.
-echo  olx_scrappy   data: %SCRAPPY_DATA_DIR%
+echo  olx_scrappy   data: packages\server\data (or SCRAPPY_DATA_DIR from .env)
 echo  ----------------------------------------
 echo   1. List saved searches
 echo   2. Add a saved search
