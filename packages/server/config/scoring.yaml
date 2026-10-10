@@ -99,21 +99,25 @@ strategies:
       damaged offers, this one is only damaged ones.
     category: laptop
     # Fixable = the stated damage has none of the expensive or risky faults below. `unknown`
-    # is excluded on purpose (a choice): an unspecified fault is a risk. An offer with
-    # condition=damaged but no stated damage list (null) also fails these filters.
+    # is excluded on purpose (a choice): an unspecified fault is a risk. An offer with no
+    # stated damage list (null) also fails these filters. The seller's own label is not
+    # trusted: "na części" offers with only a missing drive/RAM/charger are fixable, so
+    # both damaged and for_parts are in; the damage list decides (test 2026-10-10).
+    # No RAM floor: missing RAM is the typical cheap fix (it just scores 0 points).
     filters:
-      - "condition=damaged"
+      - "condition!=new"
+      - "condition!=used"
       - "damage!~motherboard"
       - "damage!~gpu"
       - "damage!~no_power"
       - "damage!~liquid_damage"
       - "damage!~bios_locked"
       - "damage!~unknown"
-      - "ram_gb>=8"
       - "price>=100"       # damaged ThinkPads are often 150-400 PLN
     terms:
-      gpu.blender:  {weight: 0.25, baseline: 2100, transform: log}
-      cpu.blender:  {weight: 0.30, baseline: 110, transform: log}
+      # Repair targets are mostly business laptops with integrated graphics: the CPU carries it.
+      gpu.blender:  {weight: 0.10, baseline: 2100, transform: log}
+      cpu.blender:  {weight: 0.45, baseline: 110, transform: log}
       ram_gb:       {weight: 0.15, baseline: 16, cap: 32, transform: log}
       storage_gb:   {weight: 0.10, baseline: 512, cap: 2000, transform: log}
       storage_type: {weight: 0.05, map: {ssd: 1, hdd: 0.3, emmc: 0.2}}

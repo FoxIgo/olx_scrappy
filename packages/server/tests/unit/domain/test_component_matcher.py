@@ -47,6 +47,15 @@ CPU_NAMES = [
     "AMD Ryzen 5 5600H with Radeon Graphics",
     "Intel(R) Core(TM) Ultra 7 155H",
     "Apple M1",
+    "Intel(R) Core(TM) i5-8250U",
+    "Intel(R) Core(TM) i5-5200U",
+    "Intel(R) Core(TM) i5-1135G7",
+    "Intel(R) Core(TM) i7-1135G7",
+    "Intel(R) Core(TM) i7-1165G4",
+    "Intel(R) Core(TM) i3-1005G1",
+    "Intel(R) Core(TM) i3-1005G4",
+    "Intel(R) Core(TM) i7-4790K",
+    "Intel(R) Core(TM) i7-4790T",
 ]
 
 
@@ -192,6 +201,54 @@ def test_laptop_offers_prefer_the_mobile_variant(
 )
 def test_memory_variant_comes_from_vram_gb(text: str, vram: int | None, expected: str) -> None:
     assert resolve(GPU, text, prefer_mobile=True, vram_gb=vram).component_id == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "prefer_mobile", "component", "confidence"),
+    [
+        ("i5-8250", True, "cpu:i5-8250u", 0.85),  # missing suffix, one candidate
+        ("Intel Core i5-8250", False, "cpu:i5-8250u", 0.85),
+        ("i5-5200", True, "cpu:i5-5200u", 0.85),
+        ("i5-1135U", True, "cpu:i5-1135g7", 0.75),  # wrong suffix, one candidate in the family
+        ("i5-1135U", False, "cpu:i5-1135g7", 0.75),
+        ("i5-1135", True, "cpu:i5-1135g7", 0.85),  # i7-1135g7 is another family
+    ],
+)
+def test_cpu_missing_or_wrong_suffix_links_the_only_candidate(
+    text: str, prefer_mobile: bool, component: str, confidence: float
+) -> None:
+    result = resolve(CPU, text, prefer_mobile=prefer_mobile)
+    assert (result.component_id, result.method, result.confidence) == (component, FUZZY, confidence)
+
+
+@pytest.mark.parametrize(
+    ("text", "prefer_mobile"),
+    [
+        ("i3-1005", True),  # G1 and G4: ambiguous
+        ("i7-1165", True),  # G7 and G4: ambiguous
+        ("i3-1005U", True),  # wrong suffix, two candidates
+        ("i7-4790", False),  # K and T: ambiguous
+        ("i7-4790", True),  # no mobile variant at all
+        ("i9-1135U", True),  # never cross family: 1135G7 exists only for i5/i7
+        ("i3-1135", True),
+        ("Ryzen 5 1135U", True),
+        ("i7-8xxx", True),
+        ("i5-6gen", True),
+        ("i5", True),
+        ("Intel Core i3", True),
+    ],
+)
+def test_cpu_suffix_rules_stay_unresolved_when_ambiguous_or_cross_family(
+    text: str, prefer_mobile: bool
+) -> None:
+    assert resolve(CPU, text, prefer_mobile=prefer_mobile) == Resolution.unresolved()
+
+
+def test_cpu_suffix_rule_is_ambiguous_with_two_mobile_variants() -> None:
+    names = ["Intel Core i7-1165G7", "Intel Core i7-1165G4"]
+    matcher = ComponentMatcher([Component.from_name(CPU, n) for n in names], [])
+    assert matcher.resolve(CPU, "i7-1165", prefer_mobile=True) == Resolution.unresolved()
+    assert matcher.resolve(CPU, "i7-1165U", prefer_mobile=True) == Resolution.unresolved()
 
 
 def test_cpu_prefers_the_only_mobile_sibling_of_a_truncated_number() -> None:

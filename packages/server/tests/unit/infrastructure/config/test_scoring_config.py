@@ -150,8 +150,13 @@ def test_regular_strategies_exclude_damaged_and_for_parts(
         (laptop(condition="damaged", damage=("unknown",)), False),
         (laptop(condition="damaged"), False),  # damaged but nothing stated: a risk
         (laptop(condition="used", damage=("screen",)), False),
-        (laptop(condition="for_parts", damage=("screen",)), False),
-        (laptop(condition="damaged", damage=("keyboard",), ram_gb=4), False),
+        (laptop(condition="new", damage=("screen",)), False),
+        # the seller's "na części" label is not trusted: a fixable fault is still fixable
+        (laptop(condition="for_parts", damage=("screen",)), True),
+        (laptop(condition="for_parts", damage=("storage_missing", "ram_missing")), True),
+        (laptop(condition="for_parts", damage=("motherboard",)), False),
+        # no RAM floor: RAM is cheap to add, it only lowers the score
+        (laptop(condition="damaged", damage=("keyboard",), ram_gb=4), True),
     ],
 )
 def test_repair_strategy_wants_fixable_damage(

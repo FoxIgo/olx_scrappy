@@ -95,6 +95,7 @@ Implementation notes (slice 3, done):
   matches `H`; a bare NVIDIA number (`1660ti`, `3060`) matches when one family has it; a
   close slug (difflib ratio >= 0.8, unique by a 0.1 margin) with the same model token.
   Text cleanup: `4 GB` -> `4GB`, `6/12` core counts and clock speeds are dropped.
+- **CPU suffix rules** (resolver v3, only with exactly one candidate of the same family and number, never across i3/i5/i7/i9 or Ryzen 3/5/7/9): a number with no suffix (`i5-8250`) links to the one catalog chip with a suffix (laptop offers: the one mobile U/H/HS/HX/G1-G7/P/M/Y variant), fuzzy 0.85; a wrong suffix (`i5-1135U` -> `i5-1135G7`) links to the one chip with that number, fuzzy 0.75. Chips older than ~10 years have no Blender rows and stay unresolved by decision.
 - **Human loop.** `scrappy components status` lists the most frequent unresolved texts;
   `scrappy components alias add <cpu|gpu> "<raw text>" <component-id>` stores the alias
   and marks the links of that text stale, so the next `components resolve` redoes exactly
@@ -271,6 +272,11 @@ state it.
   choice; a damaged offer with no stated `damage` also drops out), requires `ram_gb>=8` and
   `price>=100` (damaged ThinkPads are often 150-400 PLN), and scores the hardware like
   `balanced` (no condition term; value = performance / price).
+
+- **Old chips are ignored** (user, 2026-10-10): CPUs older than ~10 years are useless for
+  this purpose. Blender 4.5 has almost no runs for 2011–2015 laptop chips (i5-2540M,
+  i5-4200M…) and we do NOT add older Blender versions to cover them: they stay unresolved,
+  count as missing and lower `coverage`.
 
 ## Implementation slices
 

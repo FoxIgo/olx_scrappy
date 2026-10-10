@@ -47,7 +47,7 @@ profiles:
     api_key_env: OPENROUTER_API_KEY
     mode: sync                  # sync | batch | auto (batch needs the OpenRouter batch adapter)
     structured_output: json_schema   # json_schema | json_object | prompt_only
-    concurrency: 4              # parallel calls in sync mode
+    concurrency: 8              # parallel calls; 16 hit DeepInfra upstream 429s (~10 s/call)
     timeout_seconds: 60
     temperature: 0
     batch: {min_size: 20, max_size: 200, max_open: 3, max_wait_minutes: 30}

@@ -9,8 +9,10 @@ answers "which component does this raw text name?". Order of evidence:
    never guessed;
 3. **exact** slug match, choosing the variant that fits the offer (below);
 4. **fuzzy**, always with the *same model number*: a CPU named without Blender's "w/ Radeon
-   780M" tail, an Intel "HF" for "H", a bare GPU number ("1660ti" -> GTX 1660 Ti) when only
-   one family has it, or a close slug; ambiguous candidates stay unresolved;
+   780M" tail, an Intel "HF" for "H", a CPU number with a missing or wrong suffix when the
+   catalog has exactly one such chip (``i5-8250`` -> ``i5-8250U``), a bare GPU number
+   ("1660ti" -> GTX 1660 Ti) when only one family has it, or a close slug;
+   ambiguous candidates stay unresolved;
 5. (follow-up) an LLM picking from a short candidate list: ``ResolutionMethod.LLM``.
 
 Variant choice. Extractions write "RTX 4060", not "RTX 4060 Laptop GPU", but a laptop has
@@ -36,7 +38,7 @@ from scrappy.domain.component.slug import alias_text, component_slug, is_identif
 from scrappy.domain.offer import OfferId
 from scrappy.domain.shared import InvalidValueError, require_aware
 
-RESOLVER_VERSION = 2
+RESOLVER_VERSION = 3
 """Bump when the matching rules change; every link with an older version is re-resolved."""
 
 
@@ -92,6 +94,10 @@ _INTEL_HF = re.compile(r"(-\d{4,5}h[kqx]?)f$")
 _MEMORY_TEXT = re.compile(r"\b(\d+)\s*gb?\b", re.IGNORECASE)
 _CORES_TEXT = re.compile(r"\b\d+\s*/\s*\d+\b")
 _NVIDIA_FAMILIES = frozenset({"rtx", "gtx", "gts", "gt", "mx"})
+_CPU_SLUG = re.compile(
+    r"^(i[3579]|ryzen-[3579])-(\d{3,5})([a-z]{0,2}\d?)(?:-(?:w|radeon|creator)-.*)?$"
+)
+_MOBILE_CPU_SUFFIX = re.compile(r"^(u|h|hs|hx|hk|hq|p|m|y|g[1-7])$")
 _FUZZY_MIN_RATIO = 0.8
 _FUZZY_MARGIN = 0.1
 
@@ -133,6 +139,13 @@ class ComponentMatcher:
         for c in self._by_id.values():
             if match := _DECORATION.match(c.slug):
                 self._decorated.setdefault((c.kind, match[1]), []).append(c)
+        self._cpu_by_number: dict[tuple[str, str], dict[str, Component]] = {}
+        for c in self._by_id.values():
+            if c.kind is ComponentKind.CPU and (m := _CPU_SLUG.match(c.slug)) and m[3]:
+                variants = self._cpu_by_number.setdefault((m[1], m[2]), {})
+                known = variants.get(m[3])
+                if known is None or len(c.slug) < len(known.slug):
+                    variants[m[3]] = c
         self._alias_text: dict[tuple[ComponentKind, str], str] = {}
         self._alias_slug: dict[tuple[ComponentKind, str], str | None] = {}
         for a in aliases:
@@ -170,7 +183,30 @@ class ComponentMatcher:
                 return Resolution(
                     alt.component_id, min(alt.confidence, 0.85), ResolutionMethod.FUZZY
                 )
-        return self._fuzzy(kind, slug, prefer_mobile, vram_gb)
+        fuzzy = self._fuzzy(kind, slug, prefer_mobile, vram_gb)
+        if fuzzy.component_id is None and kind is ComponentKind.CPU:
+            return self._cpu_suffix(slug, prefer_mobile)
+        return fuzzy
+
+    def _cpu_suffix(self, slug: str, prefer_mobile: bool) -> Resolution:
+        """A full model number with a missing ("i5-8250") or wrong ("i5-1135U") suffix letter.
+
+        Same family and number only, and only when the catalog has exactly one candidate."""
+        match = _CPU_SLUG.match(slug)
+        if match is None:
+            return Resolution.unresolved()
+        family, number, suffix = match[1], match[2], match[3]
+        variants = self._cpu_by_number.get((family, number), {})
+        if suffix:
+            if suffix in variants or len(variants) != 1:
+                return Resolution.unresolved()
+            return Resolution(next(iter(variants.values())).id, 0.75, ResolutionMethod.FUZZY)
+        pool = {
+            s: c for s, c in variants.items() if not prefer_mobile or _MOBILE_CPU_SUFFIX.match(s)
+        }
+        if len(pool) != 1:
+            return Resolution.unresolved()
+        return Resolution(next(iter(pool.values())).id, 0.85, ResolutionMethod.FUZZY)
 
     def _lookup(
         self, kind: ComponentKind, slug: str, prefer_mobile: bool, vram_gb: int | None
