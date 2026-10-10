@@ -29,7 +29,7 @@ from enum import StrEnum
 
 from scrappy.application.errors import NotFoundError
 from scrappy.application.jobs.dispatcher import DispatchReport, DispatchStatus
-from scrappy.application.use_cases.extraction import PollReport, ReconcileReport
+from scrappy.application.use_cases.extraction import PollReport, ReconcileReport, TierReport
 from scrappy.domain.run import ScrapeRun
 from scrappy.domain.shared import RunId
 from scrappy.presentation.logging import get_logger
@@ -60,6 +60,14 @@ class ExtractorStats:
     notes: list[str] = field(default_factory=list[str])
     unavailable: bool = False
     """The last tick had work but no profile could take it."""
+    ruled: int = 0
+    """Offers the rule pass ran on (ADR 0012)."""
+    escalated: int = 0
+    """Offers the rule pass or the promotion sent to the LLM."""
+
+    def add_tier(self, report: TierReport) -> None:
+        self.ruled += report.ruled
+        self.escalated += report.escalated + report.promoted
 
     def add(self, report: ReconcileReport | PollReport) -> None:
         if isinstance(report, ReconcileReport):
@@ -211,6 +219,25 @@ async def run_until_idle(
 # ---------------------------------------------------------------------------- extractor
 
 
+async def _tier(
+    app: Services, stop: asyncio.Event | None, stats: ExtractorStats, *, promote: bool
+) -> None:
+    """Rule pass + LLM gate before a reconcile tick (ADR 0012); no-op unless enabled."""
+    if not app.tier_extractions.enabled:
+        return
+    report = await _shielded(app.tier_extractions(promote=promote), stop)
+    stats.add_tier(report)
+    if report.did_work:
+        log.info(
+            "rule pass",
+            ruled=report.ruled,
+            stored=report.stored,
+            unsure=report.escalated,
+            top=report.promoted,
+            reasons=report.reasons,
+        )
+
+
 async def _start_extractor(app: Services, *, probe: bool) -> None:
     """Recover interrupted batch submissions and check every profile of the chain."""
     report = await app.poll_batches(recover=True)
@@ -250,6 +277,7 @@ async def run_extractor(
     stats = ExtractorStats()
     loop = asyncio.get_running_loop()
     next_poll = 0.0
+    changed = True  # LLM results arrived since the last promotion: the ranking moved
     try:
         await _start_extractor(app, probe=probe)
         log.info("extractor loop started", interval=idle, poll_interval=poll_every)
@@ -265,7 +293,9 @@ async def run_extractor(
                     on_tick(polled)
             if stop.is_set():
                 break
+            await _tier(app, stop, stats, promote=changed)
             report = await _shielded(app.reconcile_extractions(stop=stop), stop)
+            changed = report.stored > 0 or worked
             stats.add(report)
             _log_extraction(report)
             if on_tick:
@@ -331,15 +361,18 @@ async def extract_until_idle(
     )
     stats = ExtractorStats()
     short_waits = 0
+    changed = True
     await app.poll_batches(recover=True)
     while not stop.is_set():
         remaining = None if limit is None else limit - stats.processed
         if remaining is not None and remaining <= 0:
             break
+        await _tier(app, stop, stats, promote=changed)
         report = await _shielded(
             app.reconcile_extractions(profile=profile, flush=True, stop=stop, limit=remaining),
             stop,
         )
+        changed = report.stored > 0
         stats.add(report)
         if on_tick:
             on_tick(report)

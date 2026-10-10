@@ -3,6 +3,7 @@
 * ``scrappy extract``: show the backlog (the worker's extractor loop processes it).
 * ``scrappy extract --inline [--profile NAME] [--no-wait]``: process it in this process.
 * ``scrappy extract status`` / ``profiles [--probe]`` / ``force`` / ``requeue`` (alias).
+* ``scrappy extract rules``: the rule pass + LLM gate (ADR 0012) without any LLM call.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from scrappy.application.use_cases.extraction import (
     PollReport,
     ProvenanceFilter,
     ReconcileReport,
+    TierReport,
 )
 from scrappy.domain.category import CategoryName
 from scrappy.domain.search import SearchName
@@ -165,6 +167,9 @@ def _stats_line(stats: ExtractorStats) -> str:
     if stats.batches_submitted or stats.batches_finished:
         parts.append(f"batches submitted {stats.batches_submitted}")
         parts.append(f"finished {stats.batches_finished}")
+    if stats.ruled:
+        parts.append(f"rule pass {stats.ruled}")
+        parts.append(f"sent to the LLM {stats.escalated}")
     line = "Extraction: " + ", ".join(parts) + "."
     if stats.stored_by_profile:
         lanes = ", ".join(f"{name} {count}" for name, count in stats.stored_by_profile.items())
@@ -233,6 +238,52 @@ def extract(
             )
         report = await app.extraction_status()
         console.print(status_view(report, app.extraction_config_source))
+
+    execute(ctx, go)
+
+
+def _tier_view(report: TierReport, *, enabled: bool) -> RenderableType:
+    grid = Table.grid(padding=(0, 2))
+    grid.add_row("Rule pass", f"{report.ruled} offer(s), {report.stored} rule extraction(s) stored")
+    grid.add_row("Unsure -> LLM", f"{report.escalated} offer(s)")
+    grid.add_row("Top deals -> LLM", f"{report.promoted} offer(s)")
+    parts: list[RenderableType] = [grid]
+    if report.reasons:
+        table = Table(title="Why offers go to the LLM")
+        table.add_column("Reason")
+        table.add_column("Offers", justify="right")
+        for reason, count in report.reasons.items():
+            table.add_row(reason, str(count))
+        parts.append(table)
+    if not enabled:
+        parts.append(
+            Text(
+                "tiering is off (extraction.yaml `tiering.enabled`): the LLM still takes every "
+                "offer and no top deals are promoted",
+                style="yellow",
+            )
+        )
+    parts.extend(Text(f"note: {note}", style="yellow") for note in report.notes[:10])
+    return Group(*parts)
+
+
+@extract_app.command("rules")
+def rules(
+    ctx: typer.Context,
+    max_offers: Annotated[
+        int | None, typer.Option("--max", min=1, help="Run the rules on at most this many offers.")
+    ] = None,
+) -> None:
+    """Rule-based extraction (params + regex, no LLM) and the LLM gate (ADR 0012)."""
+
+    async def go(app: Services) -> None:
+        tier = app.tier_extractions
+        with stdout().status("Running the rules..."):
+            report = await tier(limit=max_offers, promote=True)
+        stdout().print(_tier_view(report, enabled=tier.enabled))
+        if tier.enabled:
+            backlog = await app.extraction_status.backlog()
+            stdout().print(f"LLM backlog (gated): {backlog} offer(s).")
 
     execute(ctx, go)
 

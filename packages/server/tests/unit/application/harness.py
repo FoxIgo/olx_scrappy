@@ -15,9 +15,11 @@ from scrappy.application.jobs.model import Job, JobStatus, JobType
 from scrappy.application.policy import PipelinePolicy
 from scrappy.application.ports.extraction_backends import ExtractionProfiles
 from scrappy.application.ports.extractor import (
+    RULES_MODEL,
     ExtractionInput,
     ExtractionRejection,
     ExtractionResult,
+    RuleExtraction,
 )
 from scrappy.application.ports.listing_source import ListingSource
 from scrappy.application.use_cases.extraction import (
@@ -25,6 +27,7 @@ from scrappy.application.use_cases.extraction import (
     ForceReextract,
     PollBatches,
     ReconcileExtractions,
+    TierExtractions,
 )
 from scrappy.application.use_cases.finalize_run import FinalizeRun
 from scrappy.application.use_cases.list_offers import ListOffers
@@ -43,7 +46,7 @@ from tests.unit.fakes import (
     SequentialIds,
     StaticCategoryProvider,
 )
-from tests.unit.fakes.extraction import make_profile, profiles_of
+from tests.unit.fakes.extraction import FixedTop, ScriptedRules, make_profile, profiles_of
 
 
 def classify_by_title(request: ExtractionInput) -> ExtractionResult | ExtractionRejection:
@@ -54,6 +57,16 @@ def classify_by_title(request: ExtractionInput) -> ExtractionResult | Extraction
             LAPTOP, {"gpu": "GTX 1650", "ram_gb": 16}, "fake-model", "p1", usage
         )
     return ExtractionResult(OTHER_CATEGORY, {}, "fake-model", "p1", usage)
+
+
+def rules_by_title(request: ExtractionInput) -> RuleExtraction:
+    """Default fake rule pass: laptops get ``ram_gb`` 8; a title with ``unsure:<reason>``
+    words reports those reasons; titles without 'laptop' give nothing."""
+    reasons = tuple(w.split(":", 1)[1] for w in request.title.split() if w.startswith("unsure:"))
+    if "laptop" not in request.title.lower():
+        return RuleExtraction(None, reasons or ("empty",))
+    result = ExtractionResult(LAPTOP, {"ram_gb": 8}, RULES_MODEL, "rules-t1")
+    return RuleExtraction(result, reasons)
 
 
 @dataclass
@@ -69,6 +82,8 @@ class App:
     )
     profiles: ExtractionProfiles | None = None
     """Default: one sync profile ``main`` around :attr:`extractor`."""
+    rules: ScriptedRules = field(default_factory=lambda: ScriptedRules(rules_by_title))
+    top: FixedTop = field(default_factory=FixedTop)
 
     def __post_init__(self) -> None:
         self.categories = StaticCategoryProvider(self.catalog)
@@ -108,6 +123,15 @@ class App:
             categories=self.categories,
             clock=self.clock,
             selector=self.reconcile.selector,
+            gated=self.policy.extraction.tiering.enabled,
+        )
+        self.tier = TierExtractions(
+            uow=uow,
+            clock=self.clock,
+            categories=self.categories,
+            rules=self.rules,
+            policy=self.policy.extraction,
+            top_offers=self.top,
         )
         self.force_reextract = ForceReextract(uow=uow, profiles=self.profiles, clock=self.clock)
         self.finalize_idle_runs = FinalizeIdleRuns(uow=uow, finalize_run=self.finalize_run)

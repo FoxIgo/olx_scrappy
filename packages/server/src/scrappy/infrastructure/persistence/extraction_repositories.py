@@ -101,6 +101,13 @@ class SqlExtractionStateRepository:
                 search_offers.c.search == query.search.value
             )
             stmt = stmt.where(tuple_(offers.c.source, offers.c.external_id).in_(linked))
+        if query.gated:
+            stmt = stmt.where(
+                or_(
+                    s.forced == true(),
+                    and_(s.escalation.is_not(None), s.rules_hash == offers.c.content_hash),
+                )
+            )
         stmt = stmt.where(
             offers.c.content_hash.is_not(None),
             or_(s.lease_until.is_(None), s.lease_until <= query.now),
@@ -133,6 +140,7 @@ class SqlExtractionStateRepository:
                 query.catalog,
                 query.prompt_version,
                 query.now,
+                gated=query.gated,
             ):
                 result.append(offer.id)
                 if limit is not None and len(result) >= limit:
@@ -176,6 +184,31 @@ class SqlExtractionStateRepository:
             .values(lease_owner=None, lease_until=None, updated_at=now)
         )
         return cast("CursorResult[Any]", result).rowcount
+
+    async def rules_backlog(self, version: str, *, limit: int | None = None) -> list[OfferId]:
+        s = extraction_state.c
+        joined: Any = offers.outerjoin(
+            extraction_state,
+            and_(s.source == offers.c.source, s.external_id == offers.c.external_id),
+        )
+        stmt = (
+            select(offers.c.source, offers.c.external_id)
+            .select_from(joined)
+            .where(
+                offers.c.content_hash.is_not(None),
+                or_(
+                    s.rules_hash.is_(None),
+                    s.rules_hash != offers.c.content_hash,
+                    s.rules_version.is_(None),
+                    s.rules_version != version,
+                ),
+            )
+            .order_by(offers.c.last_seen_at.desc(), offers.c.source, offers.c.external_id)
+        )
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        rows = (await self._conn.execute(stmt)).mappings()
+        return [m.offer_id_of(row, offers.c) for row in rows]
 
     async def list_parked(self) -> list[ExtractionState]:
         stmt = (

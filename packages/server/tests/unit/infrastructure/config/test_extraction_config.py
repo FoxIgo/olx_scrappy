@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from scrappy.application.policy import TieringPolicy
 from scrappy.application.ports.extraction_backends import ExtractionMode, StructuredOutput
 from scrappy.infrastructure.config.errors import ConfigError
 from scrappy.infrastructure.config.extraction import (
@@ -223,6 +224,7 @@ def test_the_shipped_example_file_is_valid(tmp_path: Path) -> None:
             assert profile.concurrency >= 6
     assert (config.profiles["gemini-lite"].daily_limit or 10**9) < 500
     assert (config.profiles["gemma-31b"].daily_limit or 10**9) < 14_400
+    assert config.policy.tiering.enabled  # rules first, LLM for top deals and unsure offers
     build_profiles(config, settings(tmp_path))
 
 
@@ -319,3 +321,27 @@ def test_quota_group_must_exist_and_replaces_the_profile_limits(tmp_path: Path) 
         profile = _openrouter("m:free", quota_group="or_free", **own)
         with pytest.raises(ConfigError, match="come from quota group"):
             _parse(tmp_path, {"pool": ["a"], "quota_groups": groups, "profiles": {"a": profile}})
+
+
+def test_tiering_defaults_off_and_parses(tmp_path: Path) -> None:
+    assert not _parse(tmp_path, FULL).policy.tiering.enabled
+
+    raw = {
+        **FULL,
+        "tiering": {
+            "enabled": True,
+            "top_n": 10,
+            "min_coverage": 0.4,
+            "escalate": ["damaged", "ram_conflict"],
+        },
+    }
+    tiering = _parse(tmp_path, raw).policy.tiering
+
+    assert (tiering.enabled, tiering.top_n, tiering.min_coverage) == (True, 10, 0.4)
+    assert tiering.escalates("damaged")
+    assert not tiering.escalates("gpu_missing")
+    assert TieringPolicy().escalates("anything")
+    with pytest.raises(ConfigError, match="min_coverage"):
+        _parse(tmp_path, {**FULL, "tiering": {"min_coverage": 2}})
+    with pytest.raises(ConfigError, match="colour"):
+        _parse(tmp_path, {**FULL, "tiering": {"colour": 1}})

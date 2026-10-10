@@ -39,6 +39,19 @@ reconciler:
   quota_cooldown_minutes: 60    # a profile that answered 402 is skipped this long
   # description_max_chars: 4000 # default: SCRAPPY_LLM_MAX_DESCRIPTION_CHARS
 
+# Tiering (ADR 0012, docs/adr/0012-tiered-extraction.md): every offer first gets a rule-based
+# extraction (OLX params + regex, ~1 ms per offer, no LLM), so `q rank` works right after
+# scraping. Only the offers below then go to the LLM, whose answer supersedes the rules:
+#   - the top_n best provisional deals of every scoring strategy (config/scoring.yaml),
+#   - offers the rules were unsure about (reasons in `escalate`; `scrappy extract rules`
+#     shows how many offers each reason sends).
+# Set enabled: false to send every offer to the LLM again (ADR 0007 behaviour).
+tiering:
+  enabled: true
+  top_n: 25                     # per strategy; raised top deals get LLM-checked first
+  min_coverage: 0.5             # rule facts are sparser than LLM ones: rank them more leniently
+  escalate: ["*"]               # or a list, e.g. [damaged, damage_unclear, gpu_missing, ram_conflict]
+
 profiles:
   openrouter:                   # PAID, approved for the pool (user, 2026-10-10)
     provider: openrouter

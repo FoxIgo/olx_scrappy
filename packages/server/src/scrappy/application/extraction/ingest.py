@@ -124,13 +124,18 @@ async def ingest_outcome(
         await uow.extraction_states.save(state)
         return IngestResult(IngestStatus.FAILED, RejectionKind.INVALID_OUTPUT, reason)
 
+    await store_extraction(uow, extraction)
+    state.record_success(now)
+    await uow.extraction_states.save(state)
+    return IngestResult(IngestStatus.STORED, extraction=extraction)
+
+
+async def store_extraction(uow: UnitOfWork, extraction: OfferExtraction) -> None:
+    """Store a validated extraction and derive relevance on every search link of the offer."""
     await uow.extractions.add(extraction)
-    for link in await uow.search_offers.list_for_offer(offer_id):
+    for link in await uow.search_offers.list_for_offer(extraction.offer_id):
         search = await uow.searches.get(link.search)
         if search is None:
             continue
         link.update_relevance(search, extraction)
         await uow.search_offers.save(link)
-    state.record_success(now)
-    await uow.extraction_states.save(state)
-    return IngestResult(IngestStatus.STORED, extraction=extraction)

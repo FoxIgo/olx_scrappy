@@ -17,6 +17,11 @@ Format::
       health_ttl_minutes: 5
       submitting_timeout_minutes: 10
       description_max_chars: 4000     # default: SCRAPPY_LLM_MAX_DESCRIPTION_CHARS
+    tiering:                          # ADR 0012, all optional
+      enabled: false                  # true: rules for every offer, LLM only for the ones below
+      top_n: 25                       # per scoring strategy: best provisional deals -> LLM
+      min_coverage: 0.5               # provisional score coverage needed to count for top_n
+      escalate: ["*"]                 # rule uncertainty reasons that go to the LLM ("*" = all)
     profiles:
       local:
         provider: openai_compatible   # openai_compatible | openrouter
@@ -52,7 +57,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from scrappy.application.extraction.profile_status import quota_tz
-from scrappy.application.policy import ExtractionPolicy
+from scrappy.application.policy import ALL_REASONS, ExtractionPolicy, TieringPolicy
 from scrappy.application.ports.extraction_backends import (
     BatchSettings,
     ExtractionMode,
@@ -164,12 +169,22 @@ class _ReconcilerModel(BaseModel):
     description_max_chars: int | None = Field(default=None, ge=100)
 
 
+class _TieringModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    top_n: int = Field(default=25, ge=0)
+    min_coverage: float = Field(default=0.5, ge=0, le=1)
+    escalate: list[str] = Field(default_factory=lambda: [ALL_REASONS])
+
+
 class _FileModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     pool: list[str] = Field(min_length=1)
     quota_groups: dict[str, _QuotaGroupModel] = Field(default_factory=dict[str, _QuotaGroupModel])
     reconciler: _ReconcilerModel = Field(default_factory=_ReconcilerModel)
+    tiering: _TieringModel = Field(default_factory=_TieringModel)
     profiles: dict[str, _ProfileModel] = Field(min_length=1)
 
 
@@ -206,7 +221,10 @@ class ExtractionConfig:
     """Where it came from (file path, or the SCRAPPY_LLM_* fallback)."""
 
 
-def _policy(model: _ReconcilerModel, settings: Settings) -> ExtractionPolicy:
+def _policy(
+    model: _ReconcilerModel, settings: Settings, tiering: _TieringModel | None = None
+) -> ExtractionPolicy:
+    tiers = tiering or _TieringModel()
     return ExtractionPolicy(
         description_max_chars=model.description_max_chars or settings.llm_max_description_chars,
         retry=ExtractionRetryPolicy(
@@ -224,6 +242,12 @@ def _policy(model: _ReconcilerModel, settings: Settings) -> ExtractionPolicy:
         quota_cooldown=timedelta(minutes=model.quota_cooldown_minutes),
         health_ttl=timedelta(minutes=model.health_ttl_minutes),
         submitting_timeout=timedelta(minutes=model.submitting_timeout_minutes),
+        tiering=TieringPolicy(
+            enabled=tiers.enabled,
+            top_n=tiers.top_n,
+            min_coverage=tiers.min_coverage,
+            escalate=frozenset(tiers.escalate),
+        ),
     )
 
 
@@ -299,7 +323,7 @@ def parse_extraction_config(data: object, *, path: Path, settings: Settings) -> 
     return ExtractionConfig(
         pool=tuple(model.pool),
         profiles=profiles,
-        policy=_policy(model.reconciler, settings),
+        policy=_policy(model.reconciler, settings, model.tiering),
         source=str(path),
     )
 

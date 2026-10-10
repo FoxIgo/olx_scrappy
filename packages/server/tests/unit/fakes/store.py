@@ -268,7 +268,15 @@ class InMemoryExtractionStateRepository:
             if not _routed(state, query):
                 continue
             latest = _latest_of(self._s, offer.id)
-            if extraction_due(offer, latest, state, query.catalog, query.prompt_version, query.now):
+            if extraction_due(
+                offer,
+                latest,
+                state,
+                query.catalog,
+                query.prompt_version,
+                query.now,
+                gated=query.gated,
+            ):
                 result.append(offer.id)
                 if limit is not None and len(result) >= limit:
                     break
@@ -298,6 +306,21 @@ class InMemoryExtractionStateRepository:
                 state.release(now)
                 count += 1
         return count
+
+    async def rules_backlog(self, version: str, *, limit: int | None = None) -> list[OfferId]:
+        offers = [o for o in self._s.offers.values() if o.content_hash is not None]
+        offers.sort(
+            key=lambda o: (-o.last_seen_at.timestamp(), o.id.source.value, o.id.external_id)
+        )
+        result: list[OfferId] = []
+        for offer in offers:
+            state = self._s.extraction_states.get(offer.id)
+            assert offer.content_hash is not None
+            if state is None or not state.rules_done(offer.content_hash, version):
+                result.append(offer.id)
+                if limit is not None and len(result) >= limit:
+                    break
+        return result
 
     async def list_parked(self) -> list[ExtractionState]:
         parked = [s for s in self._s.extraction_states.values() if s.parked]

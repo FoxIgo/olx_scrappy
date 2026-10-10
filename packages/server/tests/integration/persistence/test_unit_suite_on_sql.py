@@ -28,6 +28,7 @@ from tests.unit.application import (
     test_failures,
     test_jobs,
     test_scenario,
+    test_tiering,
     test_use_cases,
 )
 from tests.unit.application.harness import App
@@ -58,7 +59,7 @@ class SqlApp(App):
 
 @pytest.fixture(autouse=True)
 async def _sql_backed_unit_tests(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[None]:
-    for module in (test_scenario, test_failures, test_use_cases, test_extraction):
+    for module in (test_scenario, test_failures, test_use_cases, test_extraction, test_tiering):
         monkeypatch.setattr(module, "App", SqlApp)
     for module in (test_jobs, test_use_cases):
         monkeypatch.setattr(module, "InMemoryStore", _new_store)
@@ -82,4 +83,5 @@ _export(test_scenario)
 _export(test_failures)
 _export(test_use_cases)
 _export(test_extraction)
+_export(test_tiering)
 _export(test_jobs, only=("TestInMemoryJobQueue",))

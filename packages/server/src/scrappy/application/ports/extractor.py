@@ -106,3 +106,32 @@ class ExtractionRejection:
 
 class AttributeExtractor(Protocol):
     async def extract(self, request: ExtractionInput) -> ExtractionResult | ExtractionRejection: ...
+
+
+RULES_MODEL = "rules"
+"""``ExtractionResult.model`` of rule-based extractions (ADR 0012); the LLM supersedes them."""
+
+
+@dataclass(frozen=True, slots=True)
+class RuleExtraction:
+    """What the deterministic rule pass made of an offer (ADR 0012 tier 0)."""
+
+    result: ExtractionResult | None
+    """``None`` when the rules found nothing usable (the offer then needs the LLM)."""
+    uncertain: tuple[str, ...] = ()
+    """Why the rules can't be trusted for this offer (``ram_conflict``, ``damage_unclear``,
+    ...). Reasons listed in the tiering policy send the offer to the LLM."""
+
+
+class RuleExtractor(Protocol):
+    """Tier 0 of ADR 0012: params mapping + regex, pure and synchronous (no I/O).
+
+    Same input as the LLM; ``result.model`` is :data:`RULES_MODEL` and
+    ``result.prompt_version`` is :attr:`version`. Never guesses: a value that conflicts with
+    the site params is dropped and reported in ``uncertain``.
+    """
+
+    @property
+    def version(self) -> str: ...
+
+    def extract(self, request: ExtractionInput) -> RuleExtraction: ...

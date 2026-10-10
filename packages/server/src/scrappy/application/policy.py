@@ -13,6 +13,32 @@ from scrappy.domain.extraction import ExtractionRetryPolicy
 from scrappy.domain.run import HealthThresholds
 from scrappy.domain.shared import InvalidValueError, SourceId
 
+ALL_REASONS = "*"
+
+
+@dataclass(frozen=True, slots=True)
+class TieringPolicy:
+    """Rules first, LLM only for promising and uncertain offers (ADR 0012)."""
+
+    enabled: bool = False
+    """Off: every offer goes to the LLM as before (rule results are still stored when the
+    pass runs, as the fast provisional answer)."""
+    top_n: int = 25
+    """Per scoring strategy: the best ``top_n`` provisional deals go to the LLM."""
+    min_coverage: float = 0.5
+    """Coverage a provisional score needs to count for ``top_n`` (rule facts are sparser)."""
+    escalate: frozenset[str] = frozenset({ALL_REASONS})
+    """Rule uncertainty reasons that send an offer to the LLM; ``*`` = every reason."""
+
+    def __post_init__(self) -> None:
+        if self.top_n < 0:
+            raise InvalidValueError("top_n must be >= 0")
+        if not 0 <= self.min_coverage <= 1:
+            raise InvalidValueError("min_coverage must be between 0 and 1")
+
+    def escalates(self, reason: str) -> bool:
+        return ALL_REASONS in self.escalate or reason in self.escalate
+
 
 @dataclass(frozen=True, slots=True)
 class ExtractionPolicy:
@@ -36,6 +62,8 @@ class ExtractionPolicy:
     """Profile health results are cached this long (failures re-checked after it)."""
     submitting_timeout: timedelta = timedelta(minutes=10)
     """A batch stuck in ``submitting`` longer than this is reconciled with the provider."""
+    tiering: TieringPolicy = field(default_factory=TieringPolicy)
+    """Rule pass + LLM gate (ADR 0012)."""
 
     def __post_init__(self) -> None:
         if self.description_max_chars < 100:

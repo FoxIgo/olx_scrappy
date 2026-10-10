@@ -32,8 +32,10 @@ from scrappy.application.ports.extractor import (
     ExtractionInput,
     ExtractionRejection,
     ExtractionResult,
+    RuleExtraction,
 )
 from scrappy.domain.extraction import TokenUsage
+from scrappy.domain.offer import OfferId
 from tests.unit.fakes.system import FakeClock
 
 PROMPT = "p1"
@@ -211,3 +213,36 @@ def profiles_of(*profiles: ExtractionProfile, pool: Sequence[str] = ()) -> Stati
         default_profile=profiles[0].name,
         pool_names=tuple(pool),
     )
+
+
+class ScriptedRules:
+    """A :class:`~scrappy.application.ports.extractor.RuleExtractor` driven by a function
+    (ADR 0012); records every input it saw."""
+
+    def __init__(
+        self, script: Callable[[ExtractionInput], RuleExtraction], version: str = "rules-t1"
+    ) -> None:
+        self._script = script
+        self._version = version
+        self.calls: list[ExtractionInput] = []
+
+    @property
+    def version(self) -> str:
+        return self._version
+
+    def extract(self, request: ExtractionInput) -> RuleExtraction:
+        self.calls.append(request)
+        return self._script(request)
+
+
+class FixedTop:
+    """:data:`~scrappy.application.use_cases.extraction.tiering.TopOffers` returning a set
+    ranking (strategy -> offers, best first), cut to ``top_n``."""
+
+    def __init__(self, ranking: dict[str, list[OfferId]] | None = None) -> None:
+        self.ranking: dict[str, list[OfferId]] = dict(ranking or {})
+        self.calls: list[tuple[int, float]] = []
+
+    async def __call__(self, top_n: int, min_coverage: float) -> dict[str, list[OfferId]]:
+        self.calls.append((top_n, min_coverage))
+        return {name: ids[:top_n] for name, ids in self.ranking.items()}

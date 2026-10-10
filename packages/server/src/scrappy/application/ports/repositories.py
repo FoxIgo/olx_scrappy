@@ -134,6 +134,9 @@ class BacklogQuery:
     profile, offers pinned to another profile are excluded. ``None``: no routing filter."""
     pinned_only: bool = False
     """Only offers pinned to ``profile``."""
+    gated: bool = False
+    """Tiering (ADR 0012): only forced offers and offers escalated by the rule pass for their
+    current content (``extraction_due(..., gated=True)``)."""
 
 
 class ExtractionStateRepository(Protocol):
@@ -173,6 +176,11 @@ class ExtractionStateRepository(Protocol):
     async def list_parked(self) -> list[ExtractionState]:
         """States with ``parked`` set, newest ``updated_at`` first (callers check whether the
         parked target is still the offer's current one)."""
+        ...
+
+    async def rules_backlog(self, version: str, *, limit: int | None = None) -> list[OfferId]:
+        """Offers with content whose rule pass is missing or not ``rules_done(content_hash,
+        version)`` (ADR 0012 tier 0). Same order as ``backlog``."""
         ...
 
 

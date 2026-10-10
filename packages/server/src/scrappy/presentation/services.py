@@ -28,6 +28,7 @@ from scrappy.application.use_cases.extraction import (
     ForceReextract,
     PollBatches,
     ReconcileExtractions,
+    TierExtractions,
 )
 from scrappy.application.use_cases.finalize_run import FinalizeRun
 from scrappy.application.use_cases.list_offers import ListOffers
@@ -65,6 +66,11 @@ class Services(Protocol):
     def profiles(self) -> ExtractionProfiles: ...
     @property
     def reconcile_extractions(self) -> ReconcileExtractions: ...
+    @property
+    def tier_extractions(self) -> TierExtractions:
+        """Rule pass + LLM gate (ADR 0012)."""
+        ...
+
     @property
     def poll_batches(self) -> PollBatches: ...
     @property

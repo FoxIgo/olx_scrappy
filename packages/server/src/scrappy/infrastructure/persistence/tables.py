@@ -246,6 +246,10 @@ extraction_state = Table(
     Column("target_prompt_version", String(64)),
     Column("forced", Boolean, nullable=False),
     Column("requested_profile", String(64)),
+    # tiering (ADR 0012): the rule pass and why its content goes to the LLM
+    Column("rules_hash", String(64)),
+    Column("rules_version", String(96)),
+    Column("escalation", Text),
     Column("updated_at", UtcDateTime, nullable=False),
     _fk(["source", "external_id"], "offers", ["source", "external_id"]),
     Index("ix_extraction_state_lease_owner", "lease_owner"),

@@ -4,6 +4,7 @@
 * ``poll``: PollBatches (open provider batches -> ingest / bisect / release / recover)
 * ``status``: ExtractionStatus (backlog, batches, parked offers, profiles)
 * ``force``: ForceReextract (forced re-extraction, manual retry of parked offers)
+* ``tiering``: TierExtractions (ADR 0012 rule pass + LLM gate)
 """
 
 from scrappy.application.use_cases.extraction.common import ProfileSelector, RequestPacer
@@ -22,6 +23,11 @@ from scrappy.application.use_cases.extraction.status import (
     ExtractionStatusReport,
     ProfileView,
 )
+from scrappy.application.use_cases.extraction.tiering import (
+    ProvisionalTop,
+    TierExtractions,
+    TierReport,
+)
 
 __all__ = [
     "ExtractionStatus",
@@ -33,7 +39,10 @@ __all__ = [
     "ProfileSelector",
     "ProfileView",
     "ProvenanceFilter",
+    "ProvisionalTop",
     "ReconcileExtractions",
     "ReconcileReport",
     "RequestPacer",
+    "TierExtractions",
+    "TierReport",
 ]

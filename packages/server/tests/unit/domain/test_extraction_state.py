@@ -184,3 +184,91 @@ class TestExtractionDue:
         forced = ExtractionState.new(o.id, T0)
         forced.reset(T0, force=True)
         assert extraction_due(o, current, forced, cat, PROMPT, T0)  # up to date, but forced
+
+
+# ---------------------------------------------------------------------------- tiering
+
+
+def test_record_rules_marks_the_content_and_its_escalation() -> None:
+    of = offer()
+    assert of.content_hash is not None
+    state = ExtractionState.new(of.id, T0)
+
+    state.record_rules(of.content_hash, "rules-v1:abc", ["damaged", "ram_conflict"], at(1))
+
+    assert state.rules_done(of.content_hash, "rules-v1:abc")
+    assert not state.rules_done(of.content_hash, "rules-v2:abc")
+    assert not state.rules_done(ContentHash("f" * 64), "rules-v1:abc")
+    assert state.escalated_for(of.content_hash)
+    assert state.escalation_reasons == ("damaged", "ram_conflict")
+
+
+def test_record_rules_without_reasons_clears_an_old_escalation() -> None:
+    of = offer()
+    assert of.content_hash is not None
+    state = ExtractionState.new(of.id, T0)
+    state.record_rules(of.content_hash, "v1", ["damaged"], T0)
+
+    state.record_rules(of.content_hash, "v2", [], at(1))
+
+    assert not state.escalated_for(of.content_hash)
+    assert state.escalation is None
+
+
+def test_escalate_appends_once_and_needs_a_rule_pass() -> None:
+    of = offer()
+    assert of.content_hash is not None
+    state = ExtractionState.new(of.id, T0)
+    with pytest.raises(InvalidValueError):
+        state.escalate("top:gaming", T0)
+    state.record_rules(of.content_hash, "v1", [], T0)
+
+    assert state.escalate("top:gaming", at(1))
+    assert not state.escalate("top:gaming", at(2))
+    assert state.escalate("top:work", at(3))
+    assert state.escalation_reasons == ("top:gaming", "top:work")
+    with pytest.raises(InvalidValueError):
+        state.escalate("a,b", at(4))
+
+
+def test_escalation_is_for_the_content_it_was_made_for() -> None:
+    of = offer()
+    state = ExtractionState.new(of.id, T0)
+    state.record_rules(ContentHash("f" * 64), "v1", ["damaged"], T0)
+
+    assert of.content_hash is not None
+    assert not state.escalated_for(of.content_hash)
+
+
+def test_record_success_keeps_the_rule_markers() -> None:
+    of = offer()
+    assert of.content_hash is not None
+    state = ExtractionState.new(of.id, T0)
+    state.record_rules(of.content_hash, "v1", ["damaged"], T0)
+
+    state.record_success(at(1))
+
+    assert state.rules_done(of.content_hash, "v1")
+    assert state.escalated_for(of.content_hash)
+
+
+def test_gated_backlog_takes_only_escalated_or_forced_offers() -> None:
+    of = offer()
+    assert of.content_hash is not None
+    cat = catalog()
+    state = ExtractionState.new(of.id, T0)
+    assert extraction_due(of, None, None, cat, PROMPT, T0)
+    assert not extraction_due(of, None, None, cat, PROMPT, T0, gated=True)
+
+    state.record_rules(of.content_hash, "v1", [], T0)
+    assert not extraction_due(of, None, state, cat, PROMPT, T0, gated=True)
+
+    state.escalate("damaged", T0)
+    assert extraction_due(of, None, state, cat, PROMPT, T0, gated=True)
+
+    up_to_date = extraction(of)
+    assert not extraction_due(of, up_to_date, state, cat, PROMPT, T0, gated=True)
+
+    plain = ExtractionState.new(of.id, T0)
+    plain.reset(T0, force=True)
+    assert extraction_due(of, up_to_date, plain, cat, PROMPT, T0, gated=True)

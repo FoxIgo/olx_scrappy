@@ -51,7 +51,9 @@ from scrappy.application.use_cases.extraction import (
     ExtractionStatus,
     ForceReextract,
     PollBatches,
+    ProvisionalTop,
     ReconcileExtractions,
+    TierExtractions,
 )
 from scrappy.application.use_cases.finalize_run import FinalizeRun
 from scrappy.application.use_cases.list_offers import ListOffers
@@ -73,6 +75,7 @@ from scrappy.infrastructure.config.settings import Settings
 from scrappy.infrastructure.config.sources import SourceConfig, SourcesConfig, load_sources
 from scrappy.infrastructure.extraction.profiles import build_profiles
 from scrappy.infrastructure.extraction.prompt import PROMPT_VERSION
+from scrappy.infrastructure.extraction.rules import RuleBasedExtractor
 from scrappy.infrastructure.persistence import (
     SqlAnalyticsQueries,
     SqlOfferQueries,
@@ -152,6 +155,7 @@ class Container:
     q: QueryUseCases
     profiles: ExtractionProfiles
     reconcile_extractions: ReconcileExtractions
+    tier_extractions: TierExtractions
     poll_batches: PollBatches
     extraction_status: ExtractionStatus
     force_reextract: ForceReextract
@@ -294,6 +298,25 @@ async def build_app(
         categories=category_provider,
         clock=clock,
         selector=reconcile.selector,
+        gated=policy.extraction.tiering.enabled,
+    )
+    q = build_query_use_cases(
+        uow=uow,
+        queries=analytics_queries,
+        categories=category_provider,
+        scoring=(scoring := YamlScoringProvider(settings.scoring_file, category_provider)),
+        scoring_queries=analytics_queries,
+        extraction=extraction_status,
+    )
+    resolve_components = ResolveComponents(uow=uow, clock=clock)
+    tier_extractions = TierExtractions(
+        uow=uow,
+        clock=clock,
+        categories=category_provider,
+        rules=RuleBasedExtractor(),
+        policy=policy.extraction,
+        resolve=resolve_components,
+        top_offers=ProvisionalTop(q.rank, scoring),
     )
     dispatcher = JobDispatcher(
         handlers=handlers, uow=uow, clock=clock, retry=policy.retry, finalize_run=finalize_run
@@ -318,16 +341,10 @@ async def build_app(
         finalize_idle_runs=FinalizeIdleRuns(uow=uow, finalize_run=finalize_run),
         list_offers=ListOffers(uow=uow, queries=queries, categories=category_provider),
         set_override=SetRelevanceOverride(uow=uow),
-        q=build_query_use_cases(
-            uow=uow,
-            queries=analytics_queries,
-            categories=category_provider,
-            scoring=YamlScoringProvider(settings.scoring_file, category_provider),
-            scoring_queries=analytics_queries,
-            extraction=extraction_status,
-        ),
+        q=q,
         profiles=profiles,
         reconcile_extractions=reconcile,
+        tier_extractions=tier_extractions,
         poll_batches=PollBatches(
             uow=uow,
             profiles=profiles,
@@ -350,7 +367,7 @@ async def build_app(
             clock=clock,
         ),
         list_components=ListComponents(uow=uow),
-        resolve_components=ResolveComponents(uow=uow, clock=clock),
+        resolve_components=resolve_components,
         component_resolution_status=ComponentResolutionStatus(uow=uow),
         add_component_alias=AddComponentAlias(uow=uow),
         log_level=settings.log_level,

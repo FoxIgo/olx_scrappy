@@ -11,7 +11,11 @@ history, and run/job bookkeeping. The `scrappy q` commands answer the common que
 correctly and compactly. Improvised SQL usually gets the subtle parts wrong:
 
 - **Latest extraction:** an offer can have several extractions (re-extracted with a new
-  model or schema). Only the latest one counts.
+  model or schema). Only the latest one counts. With tiering (ADR 0012) most offers carry
+  a fast rule-based extraction (`model = rules`, regex over title/description/params);
+  only top deals and offers the rules were unsure about get an LLM extraction, which then
+  supersedes it. Rule facts are sparser (null when not clearly stated), so mention it when
+  an answer rests on `model = rules` rows.
 - **Relevance:** offers the LLM classified as junk for a search (chargers, cases…) are
   hidden by default, and a user's manual override beats the LLM.
 - **Price kinds:** only fixed prices have an amount. Exchange/free offers must not enter

@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 
 from scrappy.application.extraction.batch import BatchItem, BatchStatus, ExtractionBatch
@@ -274,6 +274,7 @@ class ReconcileExtractions:
             now=self._clock.now(),
             profile=profile.name,
             pinned_only=pinned_only,
+            gated=self._policy.tiering.enabled,
         )
 
     async def _count(self, query: BacklogQuery) -> int:
@@ -359,9 +360,7 @@ class ReconcileExtractions:
                 return
             catalog = query.catalog
             now = self._clock.now()
-            query = BacklogQuery(
-                catalog, query.prompt_version, now, query.search, query.profile, query.pinned_only
-            )
+            query = replace(query, now=now)
             async with self._uow() as uow:
                 claimed = await uow.extraction_states.claim(
                     query, owner=self._owner, lease_until=now + self._policy.sync_lease, limit=limit
@@ -527,14 +526,7 @@ class ReconcileExtractions:
             batch_id = self._ids.new_id()
             async with self._uow() as uow:
                 claimed = await uow.extraction_states.claim(
-                    BacklogQuery(
-                        catalog,
-                        query.prompt_version,
-                        now,
-                        query.search,
-                        query.profile,
-                        query.pinned_only,
-                    ),
+                    replace(query, now=now),
                     owner=f"batch:{batch_id}",
                     lease_until=now + profile.batch.lease,
                     limit=limit,

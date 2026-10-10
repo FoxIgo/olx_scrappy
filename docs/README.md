@@ -13,6 +13,7 @@ Planning and design notes. Nothing here is implemented yet.
 | [adr/0006-pipeline-and-jobs.md](adr/0006-pipeline-and-jobs.md) | Discover → Enrich → Extract stages over a durable job queue; worker process |
 | [adr/0007-llm-extraction.md](adr/0007-llm-extraction.md) | LLM as a pure function: category + attributes, relevance, provenance |
 | [adr/0008-core-model-decisions.md](adr/0008-core-model-decisions.md) | Port shapes, transactions, job dedup keys, metrics aggregation, domain rule details |
+| [adr/0012-tiered-extraction.md](adr/0012-tiered-extraction.md) | Rules first (params, regex, component catalogue), LLM only for promising and uncertain offers |
 | [domain-model.md](domain-model.md) | Entities, value objects, domain rules |
 | [requirements.md](requirements.md) | Requirements gathered round by round |
 | [research/scraping-tools-evaluation.md](research/scraping-tools-evaluation.md) | Verdicts on scraping tools (Scrapling, Scrapy, Crawlee, Camoufox…) |

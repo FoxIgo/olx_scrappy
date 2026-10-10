@@ -385,6 +385,9 @@ def state_values(state: ExtractionState) -> dict[str, Any]:
         "target_prompt_version": None if target is None else target.prompt_version,
         "forced": state.forced,
         "requested_profile": state.requested_profile,
+        "rules_hash": None if state.rules_hash is None else state.rules_hash.value,
+        "rules_version": state.rules_version,
+        "escalation": state.escalation,
         "updated_at": state.updated_at,
     }
 
@@ -412,6 +415,9 @@ def state_from(row: Row, c: Cols) -> ExtractionState:
         target=target,
         forced=bool(row[c.forced]),
         requested_profile=row[c.requested_profile],
+        rules_hash=None if row[c.rules_hash] is None else ContentHash(row[c.rules_hash]),
+        rules_version=row[c.rules_version],
+        escalation=row[c.escalation],
     )
 
 

@@ -58,12 +58,15 @@ class ExtractionStatus:
         categories: CategoryProvider,
         clock: Clock,
         selector: ProfileSelector,
+        gated: bool = False,
     ) -> None:
         self._uow = uow
         self._profiles = profiles
         self._categories = categories
         self._clock = clock
         self._selector = selector
+        self._gated = gated
+        """Tiering (ADR 0012): the backlog is only what the rule pass escalated."""
 
     @property
     def profiles(self) -> ExtractionProfiles:
@@ -73,7 +76,7 @@ class ExtractionStatus:
         """The backlog size (for one search, or all) as the default profile sees it."""
         catalog = await self._categories.catalog()
         prompt = self._profiles.get(self._profiles.default).prompt_version
-        query = BacklogQuery(catalog, prompt, self._clock.now(), search=search)
+        query = BacklogQuery(catalog, prompt, self._clock.now(), search=search, gated=self._gated)
         async with self._uow() as uow:
             return await uow.extraction_states.count_backlog(query)
 
@@ -88,14 +91,16 @@ class ExtractionStatus:
         now = self._clock.now()
         catalog = await self._categories.catalog()
         default = self._profiles.get(self._profiles.default)
-        query = BacklogQuery(catalog, default.prompt_version, now)
+        query = BacklogQuery(catalog, default.prompt_version, now, gated=self._gated)
         async with self._uow() as uow:
             backlog = await uow.extraction_states.count_backlog(query)
             search_backlog = (
                 None
                 if search is None
                 else await uow.extraction_states.count_backlog(
-                    BacklogQuery(catalog, default.prompt_version, now, search=search)
+                    BacklogQuery(
+                        catalog, default.prompt_version, now, search=search, gated=self._gated
+                    )
                 )
             )
             open_batches = await uow.extraction_batches.list_open()
