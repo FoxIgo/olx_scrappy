@@ -68,6 +68,7 @@ from scrappy.infrastructure.config.categories import YamlCategoryProvider
 from scrappy.infrastructure.config.errors import ConfigError
 from scrappy.infrastructure.config.extraction import load_extraction_config
 from scrappy.infrastructure.config.policy import build_pipeline_policy
+from scrappy.infrastructure.config.scoring import YamlScoringProvider
 from scrappy.infrastructure.config.settings import Settings
 from scrappy.infrastructure.config.sources import SourceConfig, SourcesConfig, load_sources
 from scrappy.infrastructure.extraction.profiles import build_profiles
@@ -270,6 +271,7 @@ async def build_app(
     clock = clock or SystemClock()
     ids = ids or UuidIdGenerator()
     category_provider = categories or YamlCategoryProvider(settings.categories_file)
+    analytics_queries = SqlAnalyticsQueries(engine)
 
     finalize_run = FinalizeRun(uow=uow, clock=clock, policy=policy)
     handlers: dict[JobType, JobHandler] = {
@@ -318,8 +320,10 @@ async def build_app(
         set_override=SetRelevanceOverride(uow=uow),
         q=build_query_use_cases(
             uow=uow,
-            queries=SqlAnalyticsQueries(engine),
+            queries=analytics_queries,
             categories=category_provider,
+            scoring=YamlScoringProvider(settings.scoring_file, category_provider),
+            scoring_queries=analytics_queries,
             extraction=extraction_status,
         ),
         profiles=profiles,

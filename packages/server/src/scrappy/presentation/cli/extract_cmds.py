@@ -106,33 +106,36 @@ def _parked_table(report: ExtractionStatusReport, limit: int = 10) -> Table | No
 
 def _profiles_table(report: ExtractionStatusReport, *, live: bool) -> Table:
     table = Table(title="Extraction profiles")
-    columns = ["Profile", "Provider", "Model", "Mode", "Output", "Conc.", "Rate", "Today", "Batch"]
+    columns = ["Profile", "Pool", "Provider", "Model", "Mode", "Output"]
+    columns += ["Conc.", "Rate", "Today", "Batch"]
     columns.append("Health" if live else "State")
     for column in columns:
         table.add_column(column, overflow="fold")
     for view in report.profiles:
         profile, caps = view.profile, view.profile.capabilities
-        name = profile.name + (" (default)" if view.is_default else "")
-        if not view.is_default and view.in_fallback:
-            name += " (fallback)"
         output = caps.structured_output.value
         if view.health is not None and view.health.effective_structured_output is not None:
             output = f"{output} -> {view.health.effective_structured_output.value}"
         rate = "-" if caps.rate_limit_per_minute is None else f"{caps.rate_limit_per_minute:g}/min"
-        today = str(view.status.requests_on(report.at, caps.quota_tz))
+        today = str(view.quota_status.requests_on(report.at, caps.quota_tz))
         if caps.daily_limit is not None:
             today += f"/{caps.daily_limit}"
+        if caps.quota_group is not None:
+            today += f" ({caps.quota_group})"
         if view.health is not None:
             state = Text(
                 ("ok: " if view.health.ok else "UNAVAILABLE: ") + view.health.detail,
                 style="green" if view.health.ok else "red",
             )
         elif view.blocked:
-            state = Text(f"blocked: {view.status.reason or 'daily limit'}", style="yellow")
+            why = view.status.reason if view.status.is_blocked(report.at) else None
+            why = why or view.quota_status.reason or "daily limit"
+            state = Text(f"blocked: {why}", style="yellow")
         else:
             state = Text("ready")
         table.add_row(
-            name,
+            profile.name,
+            "lane" if view.in_pool else "-",
             profile.provider,
             profile.model,
             profile.mode.value,
@@ -162,7 +165,11 @@ def _stats_line(stats: ExtractorStats) -> str:
     if stats.batches_submitted or stats.batches_finished:
         parts.append(f"batches submitted {stats.batches_submitted}")
         parts.append(f"finished {stats.batches_finished}")
-    return "Extraction: " + ", ".join(parts) + "."
+    line = "Extraction: " + ", ".join(parts) + "."
+    if stats.stored_by_profile:
+        lanes = ", ".join(f"{name} {count}" for name, count in stats.stored_by_profile.items())
+        line += f" Per lane: {lanes}."
+    return line
 
 
 # ---------------------------------------------------------------------------- commands
@@ -175,7 +182,8 @@ def extract(
         bool, typer.Option("--inline", help="Process the backlog in this process.")
     ] = False,
     profile: Annotated[
-        str | None, typer.Option("--profile", "-p", help="Use only this profile (no fallback).")
+        str | None,
+        typer.Option("--profile", "-p", help="Use only this profile (not the whole pool)."),
     ] = None,
     no_wait: Annotated[
         bool,

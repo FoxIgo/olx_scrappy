@@ -67,6 +67,9 @@ _THOUGHT = re.compile(r"^\s*<(thought|thinking|think)>.*?</\1>\s*", re.DOTALL | 
 _RETRY_DELAY = re.compile(r'"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"')
 _RETRY_IN = re.compile(r"retry in (\d+(?:\.\d+)?)\s*s", re.IGNORECASE)
 _PER_DAY = re.compile(r"per[\s_-]?day", re.IGNORECASE)
+_UPSTREAM_MARKERS = ("rate-limited upstream", "upstream_provider_shared_pool", "limit_source")
+UPSTREAM_PAUSE = 60.0
+"""A shared-pool upstream 429 (OpenRouter ``:free`` models): the lane pauses this long."""
 _QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "quotaId", "quotaMetric", "RetryInfo", "retryDelay")
 _SERVER_BACKOFF = (2.0, 6.0)
 MAX_RATE_WAIT = 90.0
@@ -92,8 +95,10 @@ class _ProviderError(Exception):
         status: int | None = None,
         retry_after: float | None = None,
         day_exhausted: bool = False,
+        wait: bool = True,
     ) -> None:
         super().__init__(reason)
+        self.wait = wait
         self.reason = reason
         self.kind = kind
         self.retryable = retryable
@@ -120,6 +125,17 @@ def quota_details(error: openai.APIStatusError) -> tuple[bool, bool, float | Non
         except ValueError:
             delay = None
     return quota, bool(_PER_DAY.search(text)), delay
+
+
+def is_upstream_limit(error: openai.APIStatusError) -> bool:
+    """A 429 from the model's upstream provider's shared pool (OpenRouter: "temporarily
+    rate-limited upstream", ``metadata.limit_source``). Not our account's quota, not per day:
+    waiting a minute or trying again later helps; nothing is wrong with the offer."""
+    if error.status_code != HTTP_TOO_MANY_REQUESTS:
+        return False
+    text = json.dumps(error.body, default=str) if error.body is not None else ""
+    text += " " + error.message
+    return not _PER_DAY.search(text) and any(m in text for m in _UPSTREAM_MARKERS)
 
 
 class OpenAICompatibleExtractor:
@@ -229,6 +245,7 @@ class OpenAICompatibleExtractor:
                 elif (
                     error.kind is RejectionKind.QUOTA
                     and not error.day_exhausted
+                    and error.wait
                     and error.retry_after is not None
                     and error.retry_after <= MAX_RATE_WAIT
                     and rate_waits < self._rate_limit_waits
@@ -275,6 +292,15 @@ class OpenAICompatibleExtractor:
             status = error.status_code
             kind = status_kind(status)
             is_quota, day, delay = quota_details(error)
+            if is_upstream_limit(error):  # short pause of this lane, others keep going
+                raise _ProviderError(
+                    f"LLM provider returned HTTP {status}: {error.message}",
+                    kind=RejectionKind.QUOTA,
+                    retryable=True,
+                    status=status,
+                    retry_after=max(delay or 0.0, UPSTREAM_PAUSE),
+                    wait=False,
+                ) from error
             if is_quota:
                 kind = RejectionKind.QUOTA
                 if not day and delay is None:

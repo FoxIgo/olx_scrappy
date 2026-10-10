@@ -96,6 +96,9 @@ from scrappy.domain.extraction import TokenUsage
 from scrappy.domain.offer import ContentHash, OfferId
 from scrappy.domain.shared import InvalidValueError
 
+GROUP_KEY_PREFIX = "group:"
+"""Prefix of the profile-status rows that hold a quota group's shared counter."""
+
 
 class StructuredOutput(StrEnum):
     """How strictly the provider enforces the answer shape (ADR 0010 section 8)."""
@@ -138,6 +141,9 @@ class ProfileCapabilities:
     """Max requests per day; when used up, the profile is unavailable until midnight."""
     quota_timezone: str = "UTC"
     """IANA timezone whose midnight resets ``daily_limit`` (Google: America/Los_Angeles)."""
+    quota_group: str | None = None
+    """Profiles of one group share ONE daily counter (``daily_limit`` / ``quota_timezone``
+    are then the group's). OpenRouter ``:free`` models share an account-wide daily limit."""
 
     def __post_init__(self) -> None:
         if self.concurrency < 1:
@@ -297,6 +303,12 @@ class ExtractionProfile:
                 f"profile {self.name}: supports_batch must match the presence of a backend"
             )
 
+    @property
+    def quota_key(self) -> str:
+        """Key of the persisted daily counter / daily block: the group's, else the profile's."""
+        group = self.capabilities.quota_group
+        return self.name if group is None else f"{GROUP_KEY_PREFIX}{group}"
+
     def wants_batch(self, backlog: int, *, waited_long: bool = False, flush: bool = False) -> bool:
         """Mode decision for one tick (ADR 0010 section 5). Without a batch backend, never."""
         if self.batch_backend is None:
@@ -317,8 +329,8 @@ class ExtractionProfiles(Protocol):
     def default(self) -> str: ...
 
     @property
-    def fallback(self) -> Sequence[str]:
-        """Profiles to try in order, starting with the default (no duplicates)."""
+    def pool(self) -> Sequence[str]:
+        """The profiles that run IN PARALLEL, one lane each (ADR 0010 section 9)."""
         ...
 
     def names(self) -> Sequence[str]: ...
@@ -334,24 +346,23 @@ class StaticExtractionProfiles:
 
     profiles: Mapping[str, ExtractionProfile]
     default_profile: str
-    fallback_chain: tuple[str, ...] = ()
+    pool_names: tuple[str, ...] = ()
+    """The parallel pool; empty means just the default profile."""
 
     def __post_init__(self) -> None:
         if self.default_profile not in self.profiles:
             raise InvalidValueError(f"default profile {self.default_profile} is not defined")
-        unknown = [n for n in self.fallback_chain if n not in self.profiles]
+        unknown = [n for n in self.pool_names if n not in self.profiles]
         if unknown:
-            raise InvalidValueError(f"fallback lists unknown profile(s): {', '.join(unknown)}")
+            raise InvalidValueError(f"pool lists unknown profile(s): {', '.join(unknown)}")
 
     @property
     def default(self) -> str:
         return self.default_profile
 
     @property
-    def fallback(self) -> Sequence[str]:
-        chain = [self.default_profile]
-        chain += [n for n in self.fallback_chain if n not in chain]
-        return chain
+    def pool(self) -> Sequence[str]:
+        return list(dict.fromkeys(self.pool_names)) or [self.default_profile]
 
     def names(self) -> Sequence[str]:
         return list(self.profiles)

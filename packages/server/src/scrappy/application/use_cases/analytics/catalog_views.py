@@ -96,6 +96,7 @@ class Overview:
                 "open_batches": len(report.open_batches),
                 "parked": len(report.parked),
                 "default_profile": self._extraction.profiles.default,
+                "pool": list(self._extraction.profiles.pool),
                 "blocked_profiles": [v.profile.name for v in report.profiles if v.blocked],
             }
             if report.backlog:

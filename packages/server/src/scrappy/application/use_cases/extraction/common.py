@@ -25,6 +25,8 @@ type Monotonic = Callable[[], float]
 class Availability:
     ok: bool
     reason: str = ""
+    retry_in: timedelta | None = None
+    """For a quota block: how long until it lifts (the caller may wait for short ones)."""
 
 
 class ProfileSelector:
@@ -76,18 +78,25 @@ class ProfileSelector:
     def mark_unhealthy(self, name: str, reason: str) -> None:
         self._health[name] = (ProfileHealth(False, reason), self._clock.now())
 
-    async def status(self, name: str) -> ProfileStatus:
+    async def status(self, key: str) -> ProfileStatus:
+        """The persisted status row ``key`` (a profile name, or a quota group's row)."""
         async with self._uow() as uow:
-            found = await uow.profile_status.get(name)
-        return found or ProfileStatus.new(name, self._clock.now())
+            found = await uow.profile_status.get(key)
+        return found or ProfileStatus.new(key, self._clock.now())
 
     async def availability(self, name: str) -> Availability:
         now = self._clock.now()
         profile = self._profiles.get(name)
-        status = await self.status(name)
-        if status.is_blocked(now):
-            return Availability(False, f"blocked until {status.blocked_until}: {status.reason}")
-        left = status.remaining_today(
+        own = await self.status(name)
+        shared = own if profile.quota_key == name else await self.status(profile.quota_key)
+        for status in (own, shared):
+            if status.is_blocked(now) and status.blocked_until is not None:
+                return Availability(
+                    False,
+                    f"blocked until {status.blocked_until}: {status.reason}",
+                    retry_in=status.blocked_until - now,
+                )
+        left = shared.remaining_today(
             profile.capabilities.daily_limit, now, profile.capabilities.quota_tz
         )
         if left == 0:
@@ -97,12 +106,19 @@ class ProfileSelector:
             return Availability(False, health.detail)
         return Availability(True)
 
-    async def block(self, profile: ExtractionProfile, reason: str, cooldown: timedelta) -> None:
+    async def block(
+        self,
+        profile: ExtractionProfile,
+        reason: str,
+        cooldown: timedelta,
+        *,
+        shared: bool = False,
+    ) -> None:
+        """Block the profile; ``shared`` blocks its quota group (every member) instead."""
         now = self._clock.now()
+        key = profile.quota_key if shared else profile.name
         async with self._uow() as uow:
-            status = await uow.profile_status.get(profile.name) or ProfileStatus.new(
-                profile.name, now
-            )
+            status = await uow.profile_status.get(key) or ProfileStatus.new(key, now)
             status.block(now + cooldown, reason, now)
             await uow.profile_status.save(status)
             await uow.commit()

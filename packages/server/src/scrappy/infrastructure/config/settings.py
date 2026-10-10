@@ -87,6 +87,10 @@ class Settings(BaseSettings):
         return self.config_dir / "sources.yaml"
 
     @property
+    def scoring_file(self) -> Path:
+        return self.config_dir / "scoring.yaml"
+
+    @property
     def extraction_file(self) -> Path:
         return self.config_dir / "extraction.yaml"
 

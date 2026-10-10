@@ -21,9 +21,11 @@ import typer
 from scrappy.application.errors import InvalidRequestError
 from scrappy.application.use_cases.analytics import Answer, QueryScope
 from scrappy.application.use_cases.analytics.common import DEFAULT_STATUSES
+from scrappy.application.use_cases.analytics.rank import DEFAULT_MIN_COVERAGE, DEFAULT_RANK_LIMIT
 from scrappy.application.use_cases.analytics.sql import DEFAULT_SQL_LIMIT
 from scrappy.domain.analytics import DEFAULT_MAX_RATIO, DEFAULT_MIN_GROUP
 from scrappy.domain.category import CategoryName
+from scrappy.domain.component import ComponentKind
 from scrappy.domain.offer import OfferStatus
 from scrappy.domain.search import SearchName
 from scrappy.presentation.cli.common import cli_context
@@ -340,6 +342,89 @@ def deals(
         )
 
     run_q(ctx, "q.deals", params, go, pretty=pretty)
+
+
+@q_app.command("rank")
+def rank(
+    ctx: typer.Context,
+    strategy: Annotated[
+        str, typer.Option("--strategy", "-s", help="Scoring strategy (see `q strategies`).")
+    ],
+    min_coverage: Annotated[
+        float,
+        typer.Option(
+            "--min-coverage", min=0, max=1, help="Skip offers whose known share of weight is lower."
+        ),
+    ] = DEFAULT_MIN_COVERAGE,
+    search: SearchOpt = None,
+    relevant: RelevantOpt = True,
+    status: StatusOpt = None,
+    where: WhereOpt = None,
+    limit: LimitOpt = DEFAULT_RANK_LIMIT,
+    fields: Annotated[
+        str | None,
+        typer.Option(
+            "--fields",
+            help="Comma list: id,title,url,price,currency,performance,"
+            "value,coverage,breakdown and/or attribute names.",
+        ),
+    ] = None,
+    pretty: PrettyOpt = False,
+) -> None:
+    """Rank offers by price per performance under a configured strategy (config/scoring.yaml)."""
+    params = {
+        **_base_params(search, None, relevant, status, where),
+        "strategy": strategy,
+        "min_coverage": min_coverage,
+        "limit": limit,
+        "fields": _split(fields),
+    }
+
+    async def go(app: Services) -> Answer:
+        scope = _scope(search, None, relevant, status, where)
+        return await app.q.rank(
+            scope, strategy, min_coverage=min_coverage, limit=limit, fields=_split(fields)
+        )
+
+    run_q(ctx, "q.rank", params, go, pretty=pretty)
+
+
+@q_app.command("strategies")
+def strategies(ctx: typer.Context, pretty: PrettyOpt = False) -> None:
+    """The configured scoring strategies: terms, weights, baselines, filters."""
+
+    async def go(app: Services) -> Answer:
+        return await app.q.strategies()
+
+    run_q(ctx, "q.strategies", {}, go, pretty=pretty)
+
+
+@q_app.command("components")
+def components(
+    ctx: typer.Context,
+    kind: Annotated[str | None, typer.Option("--kind", help="cpu | gpu")] = None,
+    search: Annotated[
+        str | None, typer.Option("--search", help="Substring of the part name.")
+    ] = None,
+    linked: Annotated[
+        bool, typer.Option("--linked", help="Only parts that offers link to (most offers first).")
+    ] = False,
+    limit: LimitOpt = 50,
+    pretty: PrettyOpt = False,
+) -> None:
+    """CPU/GPU parts with their benchmark scores and how many offers link to each."""
+    params = {"kind": kind, "search": search, "linked": linked, "limit": limit}
+
+    async def go(app: Services) -> Answer:
+        parsed: ComponentKind | None = None
+        if kind is not None:
+            try:
+                parsed = ComponentKind(kind.lower())
+            except ValueError:
+                raise InvalidRequestError(f"unknown kind {kind!r}; expected: cpu, gpu") from None
+        return await app.q.components(kind=parsed, search=search, limit=limit, linked_only=linked)
+
+    run_q(ctx, "q.components", params, go, pretty=pretty)
 
 
 @q_app.command("history")

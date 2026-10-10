@@ -58,6 +58,9 @@ Common options (wherever they make sense):
 | `q deals [--compare-by A,B] [--min-group N] [--max-ratio R]` | underpriced offers | offer + group key + group median + ratio + group size + reason text |
 | `q history [--offer ID] [--since DATE] [--field price]` | changes over time | snapshots (offer, field, old → new, at), new offers since date |
 | `q health [--search NAME] [--runs N]` | data quality | recent runs (status, metrics, warnings), extraction coverage (pending/failed/done), per-attribute null rates, stale offers |
+| `q rank --strategy NAME [--min-coverage N]` | "Best price per performance?" (ADR 0011): offers scored by a `config/scoring.yaml` strategy | offer + `performance`, `value`, `coverage`, per-term `breakdown`; notes count exclusions |
+| `q strategies` | Which scoring strategies exist? | strategies with terms, weights, baselines, filters |
+| `q components [--kind] [--search] [--linked]` | Which CPU/GPU parts, scores and linked offers? | components + benchmark scores + offers linked |
 | `q sql "SELECT ..."` | anything else (fallback) | rows; **read-only connection**, single `SELECT`/`WITH` statement, enforced row limit and timeout |
 
 ### 3. Where the logic lives (hexagonal)

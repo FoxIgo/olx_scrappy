@@ -31,6 +31,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from scrappy.application.jobs.handlers.extract_offer import ExtractOfferHandler
+
 from scrappy.application.jobs.model import ExtractOfferPayload, Job, JobId
 from scrappy.application.ports.extractor import ExtractionInput, ExtractionResult
 from scrappy.domain.category import CategoryName

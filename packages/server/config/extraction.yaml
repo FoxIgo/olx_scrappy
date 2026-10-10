@@ -1,19 +1,31 @@
 # LLM extraction profiles (ADR 0010, docs/adr/0010-decoupled-batch-extraction.md).
 #
 # The extractor loop (`scrappy worker`, or `scrappy extract --inline`) reconciles the
-# extraction backlog with the default profile and falls back along `fallback` when a
-# profile is unavailable (server down, model missing, key missing, 402 / out of quota,
-# daily limit used up). `scrappy extract profiles` shows health and capabilities.
+# extraction backlog with ALL profiles of `pool` IN PARALLEL (ADR 0010 section 9): one lane
+# per profile, each within its own rate_limit, concurrency and daily_limit, all taking offers
+# from the same backlog. Total throughput = the sum of the lanes. A lane that is unavailable
+# (server down, key missing, 402, daily limit used up) is skipped until it recovers while the
+# others continue. `scrappy extract profiles` shows health and capabilities per lane.
 #
 # Secrets never go here: `api_key_env` names an environment variable (or a .env entry).
 # Without this file, one `openrouter` profile is derived from the SCRAPPY_LLM_* settings.
 
-default_profile: gemini-lite
-# Google AI Studio free tier: quotas are PER MODEL, so each model below is its own budget and the
-# next one takes over when a model's daily quota is used up. `lmstudio` (local, slow) and
-# `openrouter` (PAID) are defined but deliberately not in the chain: append them manually
-# (e.g. `..., gemma-26b, openrouter`) if you want a paid last resort.
-fallback: [gemini-lite, gemini-lite-31, gemma-31b, gemma-26b]
+# Google AI Studio free tier: quotas are PER MODEL, so each Google model is its own budget.
+# OpenRouter `:free` models are another provider and share one account-wide daily limit (see
+# quota_groups). `lmstudio` (local, slow) and `openrouter` (PAID) are defined but deliberately
+# not in the pool. SAFETY: an OpenRouter model whose id does not end in `:free` is paid; the
+# loader refuses it in the pool unless its profile says `paid: true`.
+# The first pool member is the "default" profile (backlog counting, `q health`).
+pool: [gemini-lite, gemini-lite-31, gemma-31b, gemma-26b, openrouter-free-nemotron]
+
+# Daily limits shared by several profiles (the profiles then name `quota_group` instead of
+# daily_limit/quota_timezone). OpenRouter: all `:free` models together get 50 requests/day,
+# or 1000/day once the account has ever bought >= $10 of credits (UNKNOWN for this account, so
+# the safe 50 is configured; raise it if you did buy credits). OpenRouter documents the limit as
+# daily but not the reset time: UTC midnight is an assumption. A 429 naming "per-day" blocks
+# the whole group until the next UTC midnight.
+quota_groups:
+  openrouter_free: {daily_limit: 50, quota_timezone: UTC}
 
 reconciler:
   interval_seconds: 30          # idle pause between reconcile ticks
@@ -113,6 +125,23 @@ profiles:
     rate_limit: 15/min
     daily_limit: 14000
     quota_timezone: America/Los_Angeles
+    timeout_seconds: 120
+
+  # OpenRouter FREE model (key: OPENROUTER_API_KEY). Free models share ~20 requests/minute and
+  # the group's daily limit above across the whole account. They also hit upstream 429s
+  # ("temporarily rate-limited upstream", metadata.limit_source = upstream_provider_shared_pool):
+  # that pauses only this lane for a minute, offers are released without penalty.
+  openrouter-free-nemotron:
+    provider: openai_compatible
+    base_url: https://openrouter.ai/api/v1
+    model: nvidia/nemotron-3-super-120b-a12b:free
+    api_key_env: OPENROUTER_API_KEY
+    mode: sync
+    structured_output: json_schema
+    temperature: 0
+    concurrency: 2
+    rate_limit: 20/min
+    quota_group: openrouter_free
     timeout_seconds: 120
 
   gemma-26b:                      # 30 / 16K / 14.4K

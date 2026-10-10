@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from scrappy.application.ports.analytics import AnalyticsQueries
+from scrappy.application.ports.scoring import ScoringProvider, ScoringQueries
 from scrappy.application.ports.system import CategoryProvider
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
 from scrappy.application.use_cases.analytics.aggregates import Deals, Facets, Stats
@@ -17,6 +18,7 @@ from scrappy.application.use_cases.analytics.offers import (
     OfferDetail,
     QueryOffers,
 )
+from scrappy.application.use_cases.analytics.rank import Components, Rank, Strategies
 from scrappy.application.use_cases.analytics.sql import RunSql
 from scrappy.application.use_cases.extraction.status import ExtractionStatus
 
@@ -36,6 +38,9 @@ class QueryUseCases:
     history: History
     health: Health
     sql: RunSql
+    rank: Rank
+    strategies: Strategies
+    components: Components
 
 
 def build_query_use_cases(
@@ -43,6 +48,8 @@ def build_query_use_cases(
     uow: UnitOfWorkFactory,
     queries: AnalyticsQueries,
     categories: CategoryProvider,
+    scoring: ScoringProvider,
+    scoring_queries: ScoringQueries,
     extraction: ExtractionStatus | None = None,
 ) -> QueryUseCases:
     resolver = ScopeResolver(uow=uow, queries=queries, categories=categories)
@@ -58,6 +65,9 @@ def build_query_use_cases(
         history=History(uow=uow, queries=queries, resolver=resolver),
         health=Health(queries=queries, categories=categories, uow=uow, extraction=extraction),
         sql=RunSql(queries=queries),
+        rank=Rank(resolver, scoring, scoring_queries),
+        strategies=Strategies(scoring),
+        components=Components(uow=uow, queries=scoring_queries),
     )
 
 

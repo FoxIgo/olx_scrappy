@@ -407,3 +407,42 @@ async def test_the_health_check_accepts_googles_models_prefix() -> None:
 
 def test_trailing_text_after_the_json_value_is_ignored() -> None:
     assert parse_json('{"a": 1}' + chr(10) * 2 + 'Hope this helps! {"b": 2}') == {"a": 1}
+
+
+# ---------------------------------------------------------------- OpenRouter shared-pool 429
+
+
+def openrouter_429(message: str, **metadata: Any) -> httpx.Response:
+    error = {"message": message, "code": 429, "metadata": metadata}
+    return httpx.Response(429, json={"error": error})
+
+
+async def test_openrouter_upstream_429_pauses_the_lane_without_waiting_or_a_day_block() -> None:
+    sleeps = Sleeps()
+    server = Server(
+        openrouter_429(
+            "nvidia/nemotron-3-super-120b-a12b:free is temporarily rate-limited upstream.",
+            provider_name="Nvidia",
+            limit_source="upstream_provider_shared_pool",
+        )
+    )
+    result = await build(server, rate_limit_waits=2, sleep=sleeps).extract(make_input())
+    assert isinstance(result, ExtractionRejection)
+    assert result.rejection_kind is RejectionKind.QUOTA  # no attempt penalty for the offer
+    assert not result.day_exhausted
+    assert result.retry_after_seconds == 60.0
+    assert sleeps.calls == []  # the lane is paused instead of holding a slot
+    assert len(server.requests) == 1
+
+
+async def test_openrouter_free_per_day_429_stays_a_day_block() -> None:
+    server = Server(
+        openrouter_429(
+            "Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 requests.",
+            limit_source="account",
+        )
+    )
+    result = await build(server).extract(make_input())
+    assert isinstance(result, ExtractionRejection)
+    assert result.rejection_kind is RejectionKind.QUOTA
+    assert result.day_exhausted

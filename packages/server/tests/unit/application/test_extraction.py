@@ -426,13 +426,28 @@ async def test_backlog_is_scoped_by_search() -> None:
 # ---------------------------------------------------------------------------- profiles
 
 
+class After:
+    """Answers only once ``gate`` has been asked: lanes run in parallel, so a test that needs
+    the first profile to fail before the second one works has to order them."""
+
+    def __init__(self, gate: ScriptedExtractor) -> None:
+        self.gate = gate
+        self.calls: list[ExtractionInput] = []
+
+    async def extract(self, request: ExtractionInput) -> ExtractionResult | ExtractionRejection:
+        while not self.gate.calls:  # noqa: ASYNC110
+            await asyncio.sleep(0)
+        self.calls.append(request)
+        return classify_by_title(request)
+
+
 async def test_fallback_to_the_next_profile_when_health_fails() -> None:
     local = ScriptedExtractor(classify_by_title)
     remote = ScriptedExtractor(classify_by_title)
     profiles = profiles_of(
         make_profile("local", local, health=FakeHealth(False, "cannot reach localhost:11434")),
         make_profile("remote", remote),
-        fallback=["remote"],
+        pool=["local", "remote"],
     )
     app = App(profiles=profiles)
     await seeded(app, 2)
@@ -448,10 +463,10 @@ async def test_402_blocks_the_profile_without_penalty_and_falls_back() -> None:
         return ExtractionRejection("HTTP 402: no credits", retryable=True, kind=RejectionKind.QUOTA)
 
     cheap = ScriptedExtractor(broke)
-    backup = ScriptedExtractor(classify_by_title)
+    backup = After(cheap)
     app = App(
         profiles=profiles_of(
-            make_profile("cheap", cheap), make_profile("backup", backup), fallback=["backup"]
+            make_profile("cheap", cheap), make_profile("backup", backup), pool=["cheap", "backup"]
         )
     )
     await seeded(app, 3)
@@ -648,12 +663,12 @@ def quota_rejection(**kwargs: object) -> ScriptedExtractor:
 
 async def test_per_day_quota_blocks_until_the_next_reset_and_falls_through_to_the_next() -> None:
     first = quota_rejection(day_exhausted=True)
-    second = ScriptedExtractor(classify_by_title)
+    second = After(first)
     app = App(
         profiles=profiles_of(
             make_profile("lite", first, quota_timezone=LA),
             make_profile("gemma", second, quota_timezone=LA),
-            fallback=["lite", "gemma"],
+            pool=["lite", "gemma"],
         )
     )
     await seeded(app, 3)
@@ -671,17 +686,17 @@ async def test_per_day_quota_blocks_until_the_next_reset_and_falls_through_to_th
     await app.reconcile()
     assert len(first.calls) == calls  # not asked again before the reset
     app.clock.current = datetime(2026, 10, 2, 7, 1, tzinfo=UTC)
-    await seeded(app, 1, start=20)
-    await app.reconcile()
-    assert len(first.calls) > calls  # tried again after the Pacific midnight
+    after = await app.extraction_status()
+    lite_after = next(v for v in after.profiles if v.profile.name == "lite")
+    assert not lite_after.blocked  # eligible again after the Pacific midnight
 
 
 async def test_per_minute_quota_pauses_the_profile_only_for_the_retry_delay() -> None:
     first = quota_rejection(retry_after_seconds=45.0)
-    second = ScriptedExtractor(classify_by_title)
+    second = After(first)
     app = App(
         profiles=profiles_of(
-            make_profile("lite", first), make_profile("gemma", second), fallback=["lite", "gemma"]
+            make_profile("lite", first), make_profile("gemma", second), pool=["lite", "gemma"]
         )
     )
     await seeded(app, 2)

@@ -1,0 +1,91 @@
+# Scoring strategies (ADR 0011 sections 5 and 6): the INTERPRETATION of stored facts.
+# Facts (RAM in GB, a part's benchmark score, price) are stored as measured and never change
+# with this file; edit weights here and the next `scrappy q rank` uses them. No migration, no
+# re-extraction.
+#
+# Formula, per offer, per term (see domain/scoring/compute.py):
+#   x      = fact (boolean -> 1/0, enum -> its `map` number), clamped to 0 <= x <= cap
+#   t      = x / baseline                       (transform: linear, the default)
+#          = log2(1 + x / baseline)             (transform: log; diminishing returns)
+#   points = weight * t                         (t == 1 exactly when the fact equals baseline)
+#   performance = sum of points of the terms whose fact is KNOWN
+#   coverage    = weight of known terms / weight of all terms
+#   value       = performance / price * 1000    (performance per 1000 PLN, fixed prices only)
+# Missing facts (null attribute, vague part text such as "Intel Core i5", a part without a
+# benchmark) are never estimated: they add 0 points and lower coverage. performance is NOT
+# renormalised by coverage, so missing information is never rewarded. `q rank` hides offers
+# below --min-coverage (default 0.6) and says how many it hid.
+#
+# Facts:   any attribute of the strategy's category (numeric, boolean, or enum with a `map`),
+#          or a part benchmark `<cpu|gpu>.<source>[.<metric>]`, e.g. gpu.blender
+#          (= gpu.blender_open_data.samples_per_minute).
+# Filters: hard requirements, same syntax as `q --where`. A null attribute never satisfies a
+#          filter, so an offer that does not state its RAM fails `ram_gb>=8`. `price>=300`
+#          drops placeholder prices (1 PLN "zamiana", 123 PLN "cena do uzgodnienia") that
+#          would otherwise top every value ranking.
+#
+# Baselines come from the Blender Open Data scores (sum of 3 scenes, samples/min, Blender 4.5):
+#   GPU: RTX 3050 Laptop 1144, RTX 3060 Laptop 2136, RTX 3070 Laptop 2708, RTX 4060 Laptop 3276,
+#        RTX 4090 Laptop 6846, GTX 1650 424.   Baseline 2100 = an RTX 3060 Laptop, the usual
+#        "solid for 1080p gaming" laptop part.
+#   CPU: i5-1135G7 47, i7-10750H 90, i5-12450H 110, i7-12700H 175, Ryzen 7 5800H 153,
+#        Ryzen 7 7840HS ~213-258.              Baseline 110 = an i5-12450H, a current mid CPU.
+# Blender measures rendering, not gaming, and NVIDIA / AMD / Intel backends differ (ADR 0011
+# section 4), so cross-vendor GPU comparisons are indicative only.
+strategies:
+
+  gaming:
+    description: "Gaming laptop: the GPU dominates, then CPU, RAM, VRAM and the panel."
+    category: laptop
+    filters: ["ram_gb>=8", "condition!=for_parts", "price>=300"]
+    terms:
+      gpu.blender:  {weight: 0.50, baseline: 2100}                  # RTX 3060 Laptop
+      cpu.blender:  {weight: 0.20, baseline: 110, transform: log}   # i5-12450H; CPU stops mattering
+      ram_gb:       {weight: 0.10, baseline: 16, cap: 32, transform: log}
+      vram_gb:      {weight: 0.05, baseline: 6, cap: 16}
+      refresh_hz:   {weight: 0.05, baseline: 144, cap: 240}
+      storage_type: {weight: 0.05, map: {ssd: 1, hdd: 0.3, emmc: 0.2}}
+      condition:    {weight: 0.05, map: {new: 1, used: 0.8, damaged: 0.3, for_parts: 0}}
+
+  work:
+    description: "Office / development laptop: CPU, RAM, storage and screen; no GPU term."
+    category: laptop
+    filters: ["ram_gb>=8", "condition!=for_parts", "price>=300"]
+    # `resolution` is free text ("1920x1080"), not a number, so it is not a term yet.
+    terms:
+      cpu.blender:     {weight: 0.35, baseline: 110}                 # i5-12450H
+      ram_gb:          {weight: 0.25, baseline: 16, cap: 64, transform: log}
+      storage_gb:      {weight: 0.10, baseline: 512, cap: 2000, transform: log}
+      storage_type:    {weight: 0.10, map: {ssd: 1, hdd: 0.3, emmc: 0.2}}
+      screen_in:       {weight: 0.10, baseline: 15.6, cap: 17.3}
+      ram_upgradeable: {weight: 0.05}                                # soldered RAM is a limit
+      condition:       {weight: 0.05, map: {new: 1, used: 0.8, damaged: 0.3, for_parts: 0}}
+
+  balanced:
+    description: "All-rounder: GPU and CPU equally, plus memory, storage, VRAM, screen, battery."
+    category: laptop
+    filters: ["ram_gb>=8", "condition!=for_parts", "price>=300"]
+    terms:
+      gpu.blender:  {weight: 0.25, baseline: 2100, transform: log}
+      cpu.blender:  {weight: 0.25, baseline: 110, transform: log}
+      ram_gb:       {weight: 0.15, baseline: 16, cap: 32, transform: log}
+      storage_gb:   {weight: 0.10, baseline: 512, cap: 2000, transform: log}
+      storage_type: {weight: 0.05, map: {ssd: 1, hdd: 0.3, emmc: 0.2}}
+      vram_gb:      {weight: 0.05, baseline: 6, cap: 16}
+      screen_in:    {weight: 0.05, baseline: 15.6, cap: 17.3}
+      battery_wh:   {weight: 0.05, baseline: 50, cap: 100}
+      condition:    {weight: 0.05, map: {new: 1, used: 0.8, damaged: 0.3, for_parts: 0}}
+
+  battery:
+    description: >-
+      Battery life, using only what offers state: the battery capacity in Wh. There is no
+      "CPU efficiency" fact, so CPU speed is a small tie-breaker, not an efficiency claim.
+      Offers that do not state battery_wh have coverage <= 0.4 and are hidden by the default
+      --min-coverage; that is intended (never guess a battery).
+    category: laptop
+    filters: ["condition!=for_parts", "condition!=damaged", "price>=300"]   # damaged includes a dead battery
+    terms:
+      battery_wh:   {weight: 0.60, baseline: 50, cap: 100}
+      cpu.blender:  {weight: 0.15, baseline: 110, transform: log}
+      ram_gb:       {weight: 0.10, baseline: 16, cap: 32, transform: log}
+      storage_type: {weight: 0.15, map: {ssd: 1, hdd: 0.3, emmc: 0.2}}

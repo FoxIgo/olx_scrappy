@@ -1,19 +1,21 @@
 """ReconcileExtractions: one tick of the extractor loop (ADR 0010 sections 1, 2, 4, 5, 8).
 
-Per tick:
+Per tick (ADR 0010 section 9: the parallel pool supersedes the sequential chain):
 
 1. Submit QUEUED batches (bisect halves, or batches whose submit was interrupted).
-2. Pick the first available profile of the chain (``--profile`` override, else the
-   fallback chain starting with the default). Unavailable = blocked by quota, out of daily
-   requests, or failing its health check.
-3. Count the backlog for that profile and choose the mode: ``batch`` (claim up to
+2. Start one **lane** per profile of the pool (``--profile`` override: just that one), all
+   concurrently. A lane is unavailable when blocked by quota, out of daily requests (its own
+   or its quota group's) or failing its health check; it then does nothing this tick while
+   the other lanes continue.
+3. A lane counts the backlog for its profile and chooses the mode: ``batch`` (claim up to
    ``batch.max_size`` -> persist the batch as QUEUED with the leases -> persist SUBMITTING ->
-   POST -> SUBMITTED) or ``sync`` (claim small chunks, call the extractor with the profile's
-   concurrency limit and rate limit, ingest each answer).
-4. When the profile turns out unusable mid-tick (QUOTA / UNAVAILABLE answers) the claimed
-   offers are released without penalty and the next profile of the chain continues.
-5. Forced work pinned to another profile (``extract force --profile``) is processed by that
-   profile when it is available.
+   POST -> SUBMITTED) or ``sync`` (claim small chunks from the shared backlog, call the
+   extractor with the profile's concurrency limit and rate limit, ingest each answer). Lanes
+   never take the same offer: claiming leases it (ADR 0010 section 3).
+4. When a profile turns out unusable mid-tick (QUOTA / UNAVAILABLE answers) its claimed
+   offers are released without penalty and only that lane stops.
+5. Forced work pinned to a profile outside the pool (``extract force --profile``) gets a
+   lane of its own, restricted to the pinned offers.
 
 Never does network I/O inside a unit of work.
 """
@@ -76,6 +78,10 @@ class ReconcileReport:
     failed: int = 0
     released: int = 0
     stale: int = 0
+    stored_by_profile: dict[str, int] = field(default_factory=dict[str, int])
+    """Stored extractions per lane (profile name)."""
+    retry_in: float | None = None
+    """When ``unavailable``: seconds until the soonest quota block lifts, if any lane has one."""
     batches_submitted: int = 0
     usage: TokenUsage = field(default_factory=TokenUsage)
     notes: list[str] = field(default_factory=list[str])
@@ -94,10 +100,12 @@ class ReconcileReport:
         if len(self.notes) < MAX_NOTES:
             self.notes.append(text)
 
-    def count(self, result: IngestResult) -> None:
+    def count(self, result: IngestResult, profile: str | None = None) -> None:
         match result.status:
             case IngestStatus.STORED:
                 self.stored += 1
+                if profile is not None:
+                    self.stored_by_profile[profile] = self.stored_by_profile.get(profile, 0) + 1
             case IngestStatus.FAILED:
                 self.failed += 1
             case IngestStatus.RELEASED:
@@ -108,6 +116,38 @@ class ReconcileReport:
 
 class _ProfileUnusable(Exception):
     """The profile answered QUOTA / UNAVAILABLE: stop using it this tick."""
+
+
+class _Budget:
+    """How many offers the tick may still claim in total, shared by all lanes
+    (``scrappy extract --inline --max N``). ``None`` = unlimited."""
+
+    def __init__(self, limit: int | None) -> None:
+        self.left = limit
+
+    @property
+    def exhausted(self) -> bool:
+        return self.left is not None and self.left <= 0
+
+    def take(self, wanted: int) -> int:
+        if self.left is None:
+            return wanted
+        got = max(0, min(wanted, self.left))
+        self.left -= got
+        return got
+
+    def refund(self, count: int) -> None:
+        if self.left is not None:
+            self.left += count
+
+
+@dataclass(slots=True)
+class _Lane:
+    profile: ExtractionProfile
+    pinned_only: bool
+    outcome: str = "idle"
+    """``idle`` (no work), ``worked``, ``unusable`` (blocked / unavailable / stopped)."""
+    retry_in: timedelta | None = None
 
 
 class ReconcileExtractions:
@@ -138,6 +178,8 @@ class ReconcileExtractions:
         self._monotonic = monotonic
         self._owner = f"sync:{worker_id or ids.new_id()}"
         self._pacers: dict[str, RequestPacer] = {}
+        self._inflight: dict[str, int] = {}
+        # calls in flight per quota key: lanes sharing a daily limit cannot overshoot it
         self._backlog_since: dict[str, datetime] = {}
 
     # ------------------------------------------------------------------ entry point
@@ -156,46 +198,71 @@ class ReconcileExtractions:
         catalog = await self._categories.catalog()
         await self.submit_queued(report, catalog)
 
-        chain: Sequence[str] = [profile] if profile is not None else self._profiles.fallback
-        used: str | None = None
-        had_work = False
-        for name in chain:
-            current = self._profiles.get(name)
-            query = self._query(catalog, current)
-            if not await self._count(query):
-                break  # nothing to do for the chain
-            had_work = True
-            availability = await self.selector.availability(name)
-            if not availability.ok:
-                report.note(f"profile {name} unavailable: {availability.reason}")
-                continue
-            try:
-                await self._work(current, query, report, flush=flush, stop=stop, limit=limit)
-            except _ProfileUnusable as error:
-                report.note(f"profile {name} stopped: {error}")
-                continue
-            used = name
-            break
+        if profile is not None:
+            lanes = [_Lane(self._profiles.get(profile), pinned_only=False)]
         else:
-            if had_work:
-                report.unavailable = True
-
-        if profile is None:
-            for name in self._profiles.names():
-                if name == used or (stop is not None and stop.is_set()):
-                    continue
-                current = self._profiles.get(name)
-                query = self._query(catalog, current, pinned_only=True)
-                if not await self._count(query):
-                    continue
-                if not (await self.selector.availability(name)).ok:
-                    report.note(f"forced work pinned to {name} waits: profile unavailable")
-                    continue
-                try:
-                    await self._work(current, query, report, flush=flush, stop=stop, limit=limit)
-                except _ProfileUnusable as error:
-                    report.note(f"profile {name} stopped: {error}")
+            pool = list(self._profiles.pool)
+            lanes = [_Lane(self._profiles.get(name), pinned_only=False) for name in pool]
+            lanes += [
+                _Lane(self._profiles.get(name), pinned_only=True)
+                for name in self._profiles.names()
+                if name not in pool
+            ]
+        budget = _Budget(limit)
+        active = lanes
+        for _ in range(len(lanes) + 1):
+            released = report.released
+            await asyncio.gather(
+                *(
+                    self._run_lane(lane, catalog, report, budget, flush=flush, stop=stop)
+                    for lane in active
+                )
+            )
+            # A lane that stopped gave its claimed offers back (no penalty). The other lanes
+            # may have found nothing to claim while those were leased: let them look again.
+            if report.released == released or budget.exhausted or (stop and stop.is_set()):
+                break
+            active = [lane for lane in lanes if lane.outcome != "unusable"]
+            if not active:
+                break
+        working = [lane for lane in lanes if lane.outcome != "idle"]
+        worked = [lane.profile.name for lane in working if lane.outcome == "worked"]
+        report.profile = "+".join(worked) or None
+        report.unavailable = bool(working) and all(lane.outcome == "unusable" for lane in working)
+        if report.unavailable:
+            waits = [lane.retry_in for lane in working if lane.retry_in is not None]
+            report.retry_in = min(waits).total_seconds() if waits else None
         return report
+
+    async def _run_lane(
+        self,
+        lane: _Lane,
+        catalog: CategoryCatalog,
+        report: ReconcileReport,
+        budget: _Budget,
+        *,
+        flush: bool,
+        stop: asyncio.Event | None,
+    ) -> None:
+        """One profile's share of the tick. Never raises for a profile problem."""
+        name = lane.profile.name
+        query = self._query(catalog, lane.profile, pinned_only=lane.pinned_only)
+        if not await self._count(query) or budget.exhausted:
+            return
+        lane.outcome = "unusable"
+        availability = await self.selector.availability(name)
+        if not availability.ok:
+            what = "forced work pinned to" if lane.pinned_only else "profile"
+            report.note(f"{what} {name} unavailable: {availability.reason}")
+            lane.retry_in = availability.retry_in
+            return
+        try:
+            await self._work(lane.profile, query, report, budget, flush=flush, stop=stop)
+        except _ProfileUnusable as error:
+            report.note(f"profile {name} stopped: {error}")
+            lane.retry_in = (await self.selector.availability(name)).retry_in
+        else:
+            lane.outcome = "worked"
 
     # ------------------------------------------------------------------ helpers
     def _query(
@@ -239,24 +306,19 @@ class ReconcileExtractions:
         profile: ExtractionProfile,
         query: BacklogQuery,
         report: ReconcileReport,
+        budget: _Budget,
         *,
         flush: bool,
         stop: asyncio.Event | None,
-        limit: int | None = None,
     ) -> None:
-        cap = None if limit is None else limit - report.processed
-        if cap is not None and cap <= 0:
-            return
         backlog = await self._count(query)
         now = self._clock.now()
-        if report.profile is None:
-            report.profile = profile.name
-            report.backlog = backlog
+        report.backlog = max(report.backlog, backlog)
         since = self._backlog_since.setdefault(profile.name, now)
         waited = now - since >= profile.batch.max_wait
         if profile.wants_batch(backlog, waited_long=waited, flush=flush):
             report.mode = report.mode or "batch"
-            await self._submit_new_batches(profile, query, report, backlog, cap)
+            await self._submit_new_batches(profile, query, report, backlog, budget)
         elif profile.batch_backend is not None and profile.mode is ExtractionMode.BATCH:
             report.note(
                 f"profile {profile.name}: {backlog} offer(s) wait for a batch "
@@ -264,7 +326,7 @@ class ReconcileExtractions:
             )
         else:
             report.mode = report.mode or "sync"
-            await self._sync(profile, query, report, stop, cap)
+            await self._sync(profile, query, report, stop, budget)
         if await self._count(query) == 0:
             self._backlog_since.pop(profile.name, None)
 
@@ -275,13 +337,9 @@ class ReconcileExtractions:
         query: BacklogQuery,
         report: ReconcileReport,
         stop: asyncio.Event | None,
-        cap: int | None = None,
+        budget: _Budget,
     ) -> None:
-        total = (
-            self._policy.max_items_per_tick
-            if cap is None
-            else min(cap, self._policy.max_items_per_tick)
-        )
+        total = self._policy.max_items_per_tick
         semaphore = asyncio.Semaphore(profile.capabilities.concurrency)
         chunk = max(2 * profile.capabilities.concurrency, 1)
         pacer = self._pacer(profile)
@@ -291,14 +349,14 @@ class ReconcileExtractions:
                 report.note("stop requested: remaining backlog left for the next run")
                 return
             limit = min(chunk, total - processed)
-            status = await self.selector.status(profile.name)
-            left = status.remaining_today(
-                profile.capabilities.daily_limit, self._clock.now(), profile.capabilities.quota_tz
-            )
+            left = await self._requests_left(profile)
             if left is not None:
-                if left == 0:
+                if left <= 0:
                     raise _ProfileUnusable("daily request limit used up")
                 limit = min(limit, left)
+            limit = budget.take(limit)
+            if limit == 0:
+                return
             catalog = query.catalog
             now = self._clock.now()
             query = BacklogQuery(
@@ -310,6 +368,7 @@ class ReconcileExtractions:
                 )
                 offers = await uow.offers.get_many(claimed)
                 await uow.commit()
+            budget.refund(limit - len(claimed))
             if not claimed:
                 return
             inputs: list[ExtractionInput] = []
@@ -335,8 +394,15 @@ class ReconcileExtractions:
                             model=profile.model,
                         )
 
-            answers = await asyncio.gather(*(call(r) for r in inputs))
-            unusable = await self._store_sync(profile, catalog, claimed, inputs, answers, report)
+            key = profile.quota_key
+            self._inflight[key] = self._inflight.get(key, 0) + len(inputs)
+            try:
+                answers = await asyncio.gather(*(call(r) for r in inputs))
+                unusable = await self._store_sync(
+                    profile, catalog, claimed, inputs, answers, report
+                )
+            finally:
+                self._inflight[key] -= len(inputs)
             processed += len(claimed)
             if unusable is not None:
                 await self._mark_unusable(profile, unusable)
@@ -367,7 +433,7 @@ class ReconcileExtractions:
                     retry=self._policy.retry,
                     now=now,
                 )
-                report.count(result)
+                report.count(result, profile.name)
                 report.usage += answer.usage
                 if result.status is IngestStatus.FAILED:
                     report.note(f"{request.offer_id}: {result.error}")
@@ -390,10 +456,20 @@ class ReconcileExtractions:
             await uow.commit()
         return unusable
 
+    async def _requests_left(self, profile: ExtractionProfile) -> int | None:
+        """Requests left today for the profile's quota key, minus calls already in flight
+        (``None`` = no daily limit)."""
+        status = await self.selector.status(profile.quota_key)
+        left = status.remaining_today(
+            profile.capabilities.daily_limit, self._clock.now(), profile.capabilities.quota_tz
+        )
+        return None if left is None else left - self._inflight.get(profile.quota_key, 0)
+
     async def _count_requests(
         self, uow: UnitOfWork, profile: ExtractionProfile, calls: int, now: datetime
     ) -> None:
-        status = await uow.profile_status.get(profile.name) or ProfileStatus.new(profile.name, now)
+        key = profile.quota_key
+        status = await uow.profile_status.get(key) or ProfileStatus.new(key, now)
         status.count_requests(calls, now, profile.capabilities.quota_tz)
         await uow.profile_status.save(status)
 
@@ -402,6 +478,8 @@ class ReconcileExtractions:
             now = self._clock.now()
             if answer.day_exhausted:  # per-day quota: back at the provider's next midnight
                 cooldown = next_reset(now, profile.capabilities.quota_tz) - now
+                await self.selector.block(profile, answer.reason, cooldown, shared=True)
+                return
             elif answer.retry_after_seconds is not None:  # per-minute quota: short pause
                 cooldown = timedelta(seconds=answer.retry_after_seconds)
             else:
@@ -424,10 +502,10 @@ class ReconcileExtractions:
         query: BacklogQuery,
         report: ReconcileReport,
         backlog: int,
-        cap: int | None = None,
+        budget: _Budget,
     ) -> None:
         catalog = query.catalog
-        while backlog > 0 and (cap is None or cap > 0):
+        while backlog > 0 and not budget.exhausted:
             now = self._clock.now()
             async with self._uow() as uow:
                 open_batches = await uow.extraction_batches.list_open(profile.name)
@@ -437,15 +515,15 @@ class ReconcileExtractions:
                     f"(max_open {profile.batch.max_open}); waiting"
                 )
                 return
-            limit = profile.batch.max_size if cap is None else min(profile.batch.max_size, cap)
-            status = await self.selector.status(profile.name)
-            left = status.remaining_today(
-                profile.capabilities.daily_limit, now, profile.capabilities.quota_tz
-            )
+            limit = profile.batch.max_size
+            left = await self._requests_left(profile)
             if left is not None:
-                if left == 0:
+                if left <= 0:
                     raise _ProfileUnusable("daily request limit used up")
                 limit = min(limit, left)
+            limit = budget.take(limit)
+            if limit == 0:
+                return
             batch_id = self._ids.new_id()
             async with self._uow() as uow:
                 claimed = await uow.extraction_states.claim(
@@ -461,6 +539,7 @@ class ReconcileExtractions:
                     lease_until=now + profile.batch.lease,
                     limit=limit,
                 )
+                budget.refund(limit - len(claimed))
                 if not claimed:
                     return
                 offers = await uow.offers.get_many(claimed)
@@ -484,8 +563,6 @@ class ReconcileExtractions:
                     await self._count_requests(uow, profile, len(items), now)
                 await uow.commit()
             backlog -= len(claimed)
-            if cap is not None:
-                cap -= len(claimed)
             await self._submit(batch, profile, catalog, report)
 
     async def submit_queued(self, report: ReconcileReport, catalog: CategoryCatalog) -> None:

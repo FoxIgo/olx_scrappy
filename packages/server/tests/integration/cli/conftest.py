@@ -107,6 +107,7 @@ def settings(tmp_path: Path) -> Settings:
     config = tmp_path / "config"
     config.mkdir()
     shutil.copy(FIXTURES / "categories.yaml", config / "categories.yaml")
+    shutil.copy(FIXTURES / "scoring.yaml", config / "scoring.yaml")
     return Settings(
         _env_file=None,  # pyright: ignore[reportCallIssue]
         data_dir=tmp_path / "data",

@@ -297,3 +297,71 @@ def test_export_jsonl_and_without_search_uses_present_categories(
 def test_export_errors_stay_envelopes(ran: CliEnv) -> None:
     assert q(ran, "export", "--format", "xlsx", code=1)["ok"] is False
     assert q(ran, "export", "--search", "nope", code=1)["error"]["type"] == "NotFoundError"
+
+
+# ---------------------------------------------------------------- rank / strategies / components
+
+
+def link_gpu(env: CliEnv, tmp_path: Path) -> None:
+    """Import the sample benchmarks and make the fake extractor's "GTX 1650" an RTX 4060 Laptop."""
+    from tests.unit.infrastructure.benchmarks.snapshots import sample_lines, write_zip
+
+    env.ok("benchmarks", "import", "--file", str(write_zip(tmp_path / "snap.zip", sample_lines())))
+    env.ok("components", "alias", "add", "gpu", "GTX 1650", "gpu:rtx-4060-laptop")
+    env.ok("components", "resolve")
+
+
+def test_strategies_lists_terms(ran: CliEnv) -> None:
+    document = q(ran, "strategies")
+    assert document["command"] == "q.strategies" and set(document) == ENVELOPE_KEYS
+    (strategy,) = document["data"]
+    assert strategy["name"] == "gaming" and strategy["filters"] == ["ram_gb>=8"]
+    assert [t["fact"] for t in strategy["terms"]] == ["gpu.blender", "ram_gb"]
+
+
+def test_rank_end_to_end(ran: CliEnv, tmp_path: Path) -> None:
+    link_gpu(ran, tmp_path)
+    document = q(ran, "rank", "--strategy", "gaming", "--min-coverage", "0")
+    assert set(document) == ENVELOPE_KEYS and document["command"] == "q.rank"
+    assert document["params"]["strategy"] == "gaming"
+    rows = document["data"]
+    # a1 (16GB, GTX -> RTX 4060 Laptop, 2000 PLN) is the only one with the part known;
+    # RTX 4060 Laptop = median run 345; 0.6 * 345/300 + 0.4 * 1.0
+    first = rows[0]
+    assert first["id"] == "olx_pl:a1" and first["price"] == "2000" and first["coverage"] == 1.0
+    assert first["performance"] == 1.09 and first["value"] == 0.545
+    assert first["breakdown"]["gpu.blender"]["part"] == "NVIDIA GeForce RTX 4060 Laptop GPU"
+    assert first["breakdown"]["ram_gb"] == {"points": 0.4, "value": 16}
+    assert [r["id"] for r in rows] == ["olx_pl:a1", "olx_pl:a3", "olx_pl:a2"]
+    assert rows[1]["breakdown"]["gpu.blender"] == "missing" and rows[1]["coverage"] == 0.4
+    assert first["url"].startswith("https://")
+
+    default = q(ran, "rank", "--strategy", "gaming", "--search", "gtx-laptops")
+    assert [r["id"] for r in default["data"]] == ["olx_pl:a1"]  # others are below coverage 0.6
+    assert any("below coverage 0.6" in n for n in default["notes"])
+
+    projected = q(ran, "rank", "-s", "gaming", "--fields", "id,value,ram_gb", "-w", "price<2500")
+    assert projected["data"] == [{"id": "olx_pl:a1", "value": 0.545, "ram_gb": 16}]
+    assert q(ran, "rank", "-s", "gaming", "--min-coverage", "0", "--limit", "1")["truncated"]
+
+
+def test_rank_errors_are_envelopes(ran: CliEnv) -> None:
+    error = q(ran, "rank", "--strategy", "nope", code=1)
+    assert error["ok"] is False and error["error"]["type"] == "InvalidRequestError"
+    assert "gaming" in error["error"]["message"]
+    assert q(ran, "rank", "--strategy", "gaming", "--fields", "zzz", code=1)["ok"] is False
+    assert ran.invoke("q", "rank").exit_code != 0  # --strategy is required
+
+
+def test_components_lists_parts_with_linked_offers(ran: CliEnv, tmp_path: Path) -> None:
+    link_gpu(ran, tmp_path)
+    everything = q(ran, "components")
+    assert everything["command"] == "q.components"
+    by_id = {c["id"]: c for c in everything["data"]}
+    assert by_id["gpu:rtx-4060-laptop"]["offers"] == 1
+    assert by_id["gpu:rtx-4060-laptop"]["benchmarks"][0]["metric"] == "samples_per_minute"
+    assert by_id["cpu:i5-12450h"]["offers"] == 0
+    linked = q(ran, "components", "--linked")["data"]
+    assert [c["id"] for c in linked] == ["gpu:rtx-4060-laptop"]
+    assert all(c["kind"] == "cpu" for c in q(ran, "components", "--kind", "cpu")["data"])
+    assert q(ran, "components", "--kind", "ram", code=1)["ok"] is False

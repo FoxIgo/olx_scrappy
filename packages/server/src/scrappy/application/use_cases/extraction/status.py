@@ -24,8 +24,12 @@ from scrappy.domain.search import SearchName
 class ProfileView:
     profile: ExtractionProfile
     is_default: bool
-    in_fallback: bool
+    in_pool: bool
+    """A lane of the parallel pool (ADR 0010 section 9)."""
     status: ProfileStatus
+    quota_status: ProfileStatus
+    """The status row that holds today's count and the daily block: the profile's own, or
+    its quota group's (``profile.quota_group``) when the daily limit is shared."""
     health: ProfileHealth | None
     """``None`` unless a live check was requested."""
     blocked: bool
@@ -111,27 +115,33 @@ class ExtractionStatus:
             if state.applies_to(ExtractionTarget.of(offer, catalog, default.prompt_version)):
                 parked.append(state)
 
-        chain = list(self._profiles.fallback)
+        pool = list(self._profiles.pool)
         views: list[ProfileView] = []
         for name in self._profiles.names():
             profile = self._profiles.get(name)
             status = statuses.get(name) or ProfileStatus.new(name, now)
+            quota_status = (
+                status
+                if profile.quota_key == name
+                else statuses.get(profile.quota_key) or ProfileStatus.new(profile.quota_key, now)
+            )
             health = (
                 await self._selector.health(name, refresh=True, probe=probe)
                 if check_health
                 else None
             )
-            left = status.remaining_today(
+            left = quota_status.remaining_today(
                 profile.capabilities.daily_limit, now, profile.capabilities.quota_tz
             )
             views.append(
                 ProfileView(
                     profile=profile,
                     is_default=name == self._profiles.default,
-                    in_fallback=name in chain,
+                    in_pool=name in pool,
                     status=status,
+                    quota_status=quota_status,
                     health=health,
-                    blocked=status.is_blocked(now) or left == 0,
+                    blocked=status.is_blocked(now) or quota_status.is_blocked(now) or left == 0,
                 )
             )
         return ExtractionStatusReport(

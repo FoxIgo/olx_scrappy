@@ -176,6 +176,7 @@ def make_profile(
     rate_limit: float | None = None,
     daily_limit: int | None = None,
     quota_timezone: str = "UTC",
+    quota_group: str | None = None,
     backend: FakeBatchBackend | None = None,
     health: FakeHealth | None = None,
     batch: BatchSettings | None = None,
@@ -196,17 +197,17 @@ def make_profile(
             rate_limit_per_minute=rate_limit,
             daily_limit=daily_limit,
             quota_timezone=quota_timezone,
+            quota_group=quota_group,
         ),
         batch=batch or BatchSettings(min_size=3, max_size=10, max_open=2),
         batch_backend=backend,
     )
 
 
-def profiles_of(
-    *profiles: ExtractionProfile, fallback: Sequence[str] = ()
-) -> StaticExtractionProfiles:
+def profiles_of(*profiles: ExtractionProfile, pool: Sequence[str] = ()) -> StaticExtractionProfiles:
+    """``pool`` = the lanes that run in parallel (default: just the first profile)."""
     return StaticExtractionProfiles(
         {p.name: p for p in profiles},
         default_profile=profiles[0].name,
-        fallback_chain=tuple(fallback),
+        pool_names=tuple(pool),
     )

@@ -164,17 +164,65 @@ The adapter streams the zip line by line and never unpacks it.
 - CLI: `scrappy benchmarks import --file PATH|--download`, `scrappy benchmarks list
   [--kind cpu|gpu] [--search TEXT] [--limit N]`.
 
-### 5. Scoring strategies (config)
+### 5. Scoring strategies (config) — implemented, slice 4
 
-`config/scoring.yaml` defines named strategies. Each strategy has:
-- **terms**: a fact (`cpu.blender`, `gpu.blender`, `ram_gb`, `vram_gb`, …), a transform
-  (`ratio_to_reference`, `log`, `cap`, …) and a weight;
-- **filters**: hard requirements, e.g. `ram_gb >= 16` or `condition != for_parts`;
-- **missing-fact policy** (open question 2).
+`config/scoring.yaml` defines named strategies (`gaming`, `work`, `balanced`, `battery`
+ship). Each strategy has a `category`, a `description`, `filters` and `terms`.
 
-The result is `performance` and `value = performance / price`, plus `coverage`: the share
-of weighted terms that had facts. Ranking is exposed through the query interface
-(ADR 0009) with `--strategy <name>`.
+**Term** = a fact plus `weight` (> 0), `baseline` (> 0), optional `cap` (> 0) and `transform`
+(`linear` default, or `log`). A fact is:
+- a category attribute: numeric (`ram_gb`, `vram_gb`, `refresh_hz`, `storage_gb`, `screen_in`,
+  `battery_wh`, `max_ram_gb`), boolean (`ram_upgradeable`: true = 1, false = 0, and false still
+  counts as *known*), or an enum with a `map` that must list every enum value
+  (`storage_type: {map: {ssd: 1, hdd: 0.3, emmc: 0.2}}`); free text such as `resolution` is
+  rejected at load;
+- a part benchmark `<cpu|gpu>.<source>[.<metric>]` read through `offer_components` ->
+  `component_benchmarks`, e.g. `gpu.blender_open_data.samples_per_minute`; the alias
+  `gpu.blender` is accepted (registry in `domain/scoring/facts.py`, one entry per new source).
+`baseline` is optional (default 1) only for booleans and mapped enums.
+
+**Formula**, per offer and term:
+
+```
+x      = fact            (boolean -> 1/0, enum -> map value), clamped to 0 <= x <= cap
+t      = x / baseline                       (linear)
+       = log2(1 + x / baseline)             (log: diminishing returns; t == 1 at x == baseline)
+points = weight * t
+performance = sum of points over the terms whose fact is known
+coverage    = sum of weights of known terms / sum of all weights
+value       = performance / price * 1000    (per 1000 PLN, fixed prices only)
+```
+
+**Missing facts add 0 points and are NOT renormalised away.** Performance is not divided by
+the covered weight, so an offer that hides its GPU cannot look better than one that states
+it; `coverage` shows how much of the strategy was actually measured, and `--min-coverage`
+(default 0.6) hides the thinly known offers (and the note says how many). A part whose text
+is too vague to resolve ("Intel Core i5") is missing, never estimated.
+
+**Filters** are hard requirements in the `q --where` syntax (`ram_gb>=8`,
+`condition!=for_parts`, `price>=300`); query `--where` adds to them. A null attribute never
+satisfies a filter (same rule as everywhere else), so unstated RAM fails `ram_gb>=8`.
+
+**Validation at load** (`ConfigError` naming strategy and term): unknown attribute or
+component source/metric, text attributes, enums without a full `map`, a `map` on a
+non-enum, `weight`/`baseline`/`cap` <= 0, missing `baseline`, unknown category, bad filters.
+
+**Query interface** (ADR 0009 envelope): `scrappy q rank --strategy NAME [--search S]
+[--where ...]* [--min-coverage 0.6] [--limit 20] [--fields ...]` returns per offer `id`,
+`title`, `url`, `price`, `currency`, `performance`, `value`, `coverage` and a `breakdown`
+(per term: raw fact, `points`, the linked `part` and `link_confidence` if below 1, or
+`"missing"`). Notes count the excluded offers by reason (filters, outside the category or not
+extracted, no fixed price, below coverage). `q strategies` lists the strategies and terms;
+`q components [--kind] [--search] [--linked] [--limit]` lists parts with benchmark scores and
+how many offers link to each. Facts for all candidate offers come from one chunked query
+(`ScoringQueries.component_facts`), no N+1.
+
+**Shipped baselines** (Blender 4.5.0 sum of 3 scenes, samples/min): GPU 2100 = RTX 3060
+Laptop (2136; RTX 3050 Laptop 1144, RTX 4060 Laptop 3276, GTX 1650 424); CPU 110 = i5-12450H
+(i7-12700H 175, Ryzen 7 5800H 153, i5-1135G7 47). RAM 16 GB (cap 32, log), storage 512 GB,
+screen 15.6 in, refresh 144 Hz, VRAM 6 GB, battery 50 Wh. The `battery` strategy uses only
+the stated `battery_wh` (there is no "CPU efficiency" fact), so it ranks only offers that
+state it.
 
 ### 6. Decisions from the design round (2026-10-10)
 
@@ -196,6 +244,10 @@ of weighted terms that had facts. Ranking is exposed through the query interface
 - **Filters:** a strategy may define hard requirements, and a query may add more
   (`--where ram_gb>=16`). Both apply.
 
+- **Vague part text is missing information** (user, 2026-10-10). "Intel Core i5", "Ryzen 5",
+  "i7 11th gen" are not estimated from a family median, in facts or in strategies. The term
+  counts as missing and lowers `coverage`.
+
 ## Implementation slices
 
 Slice 1 is done (laptop schema v2 in `config/categories.yaml`; a real category with every
@@ -206,4 +258,4 @@ attribute null is an invalid extraction, in both the adapter and the domain; per
    extractions, and make 5xx errors cost no attempt.
 2. Component, alias and benchmark tables, plus the Blender Open Data import.
 3. Resolution reconciler (offer → CPU/GPU).
-4. `config/scoring.yaml` strategies plus a `rank --strategy` query.
+4. `config/scoring.yaml` strategies plus a `q rank --strategy` query (done, see section 5).

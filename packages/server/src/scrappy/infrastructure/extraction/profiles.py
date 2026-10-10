@@ -153,6 +153,7 @@ def build_profile(
             rate_limit_per_minute=config.rate_limit_per_minute,
             daily_limit=config.daily_limit,
             quota_timezone=config.quota_timezone,
+            quota_group=config.quota_group,
         ),
         batch=config.batch,
         batch_backend=backend,
@@ -163,6 +164,6 @@ def build_profile(
 def build_profiles(config: ExtractionConfig, settings: Settings) -> StaticExtractionProfiles:
     return StaticExtractionProfiles(
         profiles={name: build_profile(c, settings) for name, c in config.profiles.items()},
-        default_profile=config.default_profile,
-        fallback_chain=config.fallback,
+        default_profile=config.pool[0],
+        pool_names=config.pool,
     )

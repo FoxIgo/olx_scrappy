@@ -34,7 +34,9 @@ from scrappy.application.ports.analytics import (
     SqlResult,
     TableInfo,
 )
+from scrappy.application.ports.scoring import ComponentFact
 from scrappy.domain.category import CategoryName
+from scrappy.domain.component import ComponentKind, ResolutionMethod
 from scrappy.domain.offer import OfferId, OfferSnapshot, OfferStatus, PriceKind
 from scrappy.domain.run import ScrapeRun
 from scrappy.domain.search import SearchName, SearchOffer
@@ -47,6 +49,9 @@ from scrappy.infrastructure.persistence.readonly_sql import (
 )
 from scrappy.infrastructure.persistence.repositories import latest_extraction_cte
 from scrappy.infrastructure.persistence.tables import (
+    component_benchmarks,
+    components,
+    offer_components,
     offer_snapshots,
     offers,
     saved_searches,
@@ -154,6 +159,61 @@ class SqlAnalyticsQueries:
         if scope.category is not None:
             conditions.append(latest.c.category == scope.category.value)
         return stmt.select_from(source).where(*conditions)
+
+    # ------------------------------------------------------------------- scoring facts
+    async def component_facts(self, offer_ids: Sequence[OfferId]) -> list[ComponentFact]:
+        keys = [(o.source.value, o.external_id) for o in offer_ids]
+        oc, b = offer_components.c, component_benchmarks.c
+        facts: list[ComponentFact] = []
+        async with self._read() as conn:
+            for part in chunks(keys, CHUNK):
+                stmt = (
+                    select(
+                        oc.source,
+                        oc.external_id,
+                        oc.kind,
+                        oc.component_id,
+                        oc.confidence,
+                        oc.method,
+                        components.c.name,
+                        b.source.label("bench_source"),
+                        b.metric,
+                        b.score,
+                        b.samples,
+                    )
+                    .select_from(
+                        offer_components.join(components, components.c.id == oc.component_id).join(
+                            component_benchmarks, b.component_id == oc.component_id
+                        )
+                    )
+                    .where(tuple_(oc.source, oc.external_id).in_(part))
+                )
+                for row in (await conn.execute(stmt)).mappings():
+                    facts.append(
+                        ComponentFact(
+                            offer_id=m.offer_id_of(row, oc),
+                            kind=ComponentKind(row["kind"]),
+                            component_id=row["component_id"],
+                            component_name=row["name"],
+                            source=row["bench_source"],
+                            metric=row["metric"],
+                            score=float(row["score"]),
+                            samples=int(row["samples"]),
+                            confidence=float(row["confidence"]),
+                            method=ResolutionMethod(row["method"]),
+                        )
+                    )
+        return facts
+
+    async def component_offer_counts(self) -> dict[str, int]:
+        oc = offer_components.c
+        stmt = (
+            select(oc.component_id, func.count())
+            .where(oc.component_id.is_not(None))
+            .group_by(oc.component_id)
+        )
+        async with self._read() as conn:
+            return {str(cid): int(n) for cid, n in (await conn.execute(stmt)).all()}
 
     # ------------------------------------------------------------------- overview
     async def overview(self) -> OverviewRows:

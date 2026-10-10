@@ -261,7 +261,7 @@ def extraction_view(report: ExtractionStatusReport, *, scoped: bool) -> Json:
                 "model": v.profile.model,
                 "mode": v.profile.mode.value,
                 "default": v.is_default,
-                "in_fallback": v.in_fallback,
+                "in_pool": v.in_pool,
                 "blocked": v.blocked,
                 "blocked_until": v.status.blocked_until,
                 "reason": v.status.reason,

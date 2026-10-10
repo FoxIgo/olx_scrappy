@@ -1,0 +1,9 @@
+# Test strategies (the categories fixture has gpu, cpu, ram_gb, storage_type, screen_in, ...).
+strategies:
+  gaming:
+    description: "test strategy"
+    category: laptop
+    filters: ["ram_gb>=8"]
+    terms:
+      gpu.blender: {weight: 0.6, baseline: 300}
+      ram_gb: {weight: 0.4, baseline: 16, cap: 32}

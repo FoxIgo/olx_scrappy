@@ -2,8 +2,9 @@
 
 Format::
 
-    default_profile: openrouter
-    fallback: [openrouter]            # tried in order after the default when unavailable
+    pool: [gemini-lite, gemma-31b]    # profiles that run IN PARALLEL (one lane each)
+    quota_groups:                     # optional: profiles that share ONE daily limit
+      openrouter_free: {daily_limit: 50, quota_timezone: UTC}
     reconciler:                       # all optional
       interval_seconds: 30
       poll_interval_seconds: 60
@@ -28,6 +29,8 @@ Format::
         rate_limit: 15/min            # N/min, N/s, N/h or a number (per minute)
         daily_limit: 1000             # requests per day (quota_timezone midnight resets it)
         quota_timezone: UTC           # IANA name, e.g. America/Los_Angeles for Google AI Studio
+        quota_group: null             # a quota_groups entry: replaces daily_limit/quota_timezone
+        paid: false                   # OpenRouter only: true allows a non-":free" model in the pool
         timeout_seconds: 120
         temperature: 0
         headers: {}
@@ -104,6 +107,8 @@ class _ProfileModel(BaseModel):
     rate_limit: str | float | None = None
     daily_limit: int | None = Field(default=None, ge=1)
     quota_timezone: str = "UTC"
+    quota_group: str | None = None
+    paid: bool = False
     timeout_seconds: float = Field(default=60, gt=0)
     temperature: float = Field(default=0, ge=0)
     headers: dict[str, str] = Field(default_factory=dict[str, str])
@@ -127,6 +132,22 @@ class _ProfileModel(BaseModel):
         return value
 
 
+class _QuotaGroupModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    daily_limit: int = Field(ge=1)
+    quota_timezone: str = "UTC"
+
+    @field_validator("quota_timezone")
+    @classmethod
+    def _timezone(cls, value: str) -> str:
+        try:
+            quota_tz(value)
+        except InvalidValueError as error:
+            raise ValueError(str(error)) from error
+        return value
+
+
 class _ReconcilerModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -146,8 +167,8 @@ class _ReconcilerModel(BaseModel):
 class _FileModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    default_profile: str
-    fallback: list[str] = Field(default_factory=list[str])
+    pool: list[str] = Field(min_length=1)
+    quota_groups: dict[str, _QuotaGroupModel] = Field(default_factory=dict[str, _QuotaGroupModel])
     reconciler: _ReconcilerModel = Field(default_factory=_ReconcilerModel)
     profiles: dict[str, _ProfileModel] = Field(min_length=1)
 
@@ -165,6 +186,8 @@ class ProfileConfig:
     rate_limit_per_minute: float | None = None
     daily_limit: int | None = None
     quota_timezone: str = "UTC"
+    quota_group: str | None = None
+    paid: bool = False
     timeout_seconds: float = 60.0
     temperature: float = 0.0
     headers: dict[str, str] = field(default_factory=dict[str, str])
@@ -175,8 +198,8 @@ class ProfileConfig:
 
 @dataclass(frozen=True, slots=True)
 class ExtractionConfig:
-    default_profile: str
-    fallback: tuple[str, ...]
+    pool: tuple[str, ...]
+    """Profiles that run in parallel, one lane each; the first is the "default" profile."""
     profiles: dict[str, ProfileConfig]
     policy: ExtractionPolicy
     source: str
@@ -205,12 +228,20 @@ def _policy(model: _ReconcilerModel, settings: Settings) -> ExtractionPolicy:
 
 
 def parse_extraction_config(data: object, *, path: Path, settings: Settings) -> ExtractionConfig:
+    if isinstance(data, dict) and ("default_profile" in data or "fallback" in data):
+        raise ConfigError(
+            f"{path.name} ({path}): 'default_profile' and 'fallback' were replaced by 'pool: "
+            "[profile, ...]' (profiles run in parallel, not one after another; see ADR 0010 "
+            "section 9). Example: pool: [gemini-lite, gemma-31b]"
+        )
     try:
         model = _FileModel.model_validate(data)
     except ValidationError as error:
         raise ConfigError(format_validation_error(path, error)) from error
     names = set(model.profiles)
-    unknown = [n for n in [model.default_profile, *model.fallback] if n not in names]
+    if len(set(model.pool)) != len(model.pool):
+        raise ConfigError(f"{path.name} ({path}): pool lists a profile twice")
+    unknown = [n for n in model.pool if n not in names]
     if unknown:
         raise ConfigError(
             f"{path.name} ({path}): unknown profile(s) {', '.join(unknown)} "
@@ -229,6 +260,20 @@ def parse_extraction_config(data: object, *, path: Path, settings: Settings) -> 
         except InvalidValueError as error:
             raise ConfigError(f"{path.name} ({path}): profiles.{name}.{error}") from error
         _reject_google_thinking_options(path, name, raw)
+        daily_limit, quota_timezone = raw.daily_limit, raw.quota_timezone
+        if raw.quota_group is not None:
+            group = model.quota_groups.get(raw.quota_group)
+            if group is None:
+                raise ConfigError(
+                    f"{path.name} ({path}): profiles.{name}.quota_group {raw.quota_group!r} is "
+                    f"not defined in quota_groups (defined: {', '.join(model.quota_groups) or '-'})"
+                )
+            if raw.daily_limit is not None or "quota_timezone" in raw.model_fields_set:
+                raise ConfigError(
+                    f"{path.name} ({path}): profiles.{name}: daily_limit/quota_timezone come "
+                    f"from quota group {raw.quota_group!r}; remove them from the profile"
+                )
+            daily_limit, quota_timezone = group.daily_limit, group.quota_timezone
         profiles[name] = ProfileConfig(
             name=name,
             provider=raw.provider,
@@ -239,8 +284,10 @@ def parse_extraction_config(data: object, *, path: Path, settings: Settings) -> 
             structured_output=StructuredOutput(raw.structured_output),
             concurrency=raw.concurrency,
             rate_limit_per_minute=parse_rate(raw.rate_limit),
-            daily_limit=raw.daily_limit,
-            quota_timezone=raw.quota_timezone,
+            daily_limit=daily_limit,
+            quota_timezone=quota_timezone,
+            quota_group=raw.quota_group,
+            paid=raw.paid,
             timeout_seconds=raw.timeout_seconds,
             temperature=raw.temperature,
             headers=dict(raw.headers),
@@ -248,13 +295,38 @@ def parse_extraction_config(data: object, *, path: Path, settings: Settings) -> 
             probe=raw.probe,
             batch=batch,
         )
+    _reject_paid_openrouter_in_pool(path, model.pool, profiles)
     return ExtractionConfig(
-        default_profile=model.default_profile,
-        fallback=tuple(model.fallback),
+        pool=tuple(model.pool),
         profiles=profiles,
         policy=_policy(model.reconciler, settings),
         source=str(path),
     )
+
+
+OPENROUTER_HOST = "openrouter.ai"
+FREE_SUFFIX = ":free"
+
+
+def is_openrouter(config: ProfileConfig) -> bool:
+    return config.provider == "openrouter" or OPENROUTER_HOST in (config.base_url or "")
+
+
+def _reject_paid_openrouter_in_pool(
+    path: Path, pool: list[str], profiles: dict[str, ProfileConfig]
+) -> None:
+    """The pool runs unattended and in parallel: it must never spend money by accident.
+    An OpenRouter model whose id does not end in ``:free`` is PAID, so it may join the pool
+    only when its profile says ``paid: true`` explicitly."""
+    for name in pool:
+        config = profiles[name]
+        if is_openrouter(config) and not config.model.endswith(FREE_SUFFIX) and not config.paid:
+            raise ConfigError(
+                f"{path.name} ({path}): pool member {name!r} uses OpenRouter model "
+                f"{config.model!r}, which is not a free model (id must end with "
+                f"{FREE_SUFFIX!r}). Remove it from the pool, or set 'paid: true' on the "
+                "profile to accept that it costs money."
+            )
 
 
 _THINKING_KEYS = ("reasoning_effort", "reasoning", "thinking", "thinking_config", "thinking_budget")
@@ -291,6 +363,7 @@ def legacy_extraction_config(settings: Settings) -> ExtractionConfig:
         model=settings.llm_model,
         base_url=settings.llm_base_url,
         api_key_env="OPENROUTER_API_KEY",
+        paid=True,
         structured_output=StructuredOutput.JSON_SCHEMA
         if settings.llm_structured_output
         else StructuredOutput.JSON_OBJECT,
@@ -299,8 +372,7 @@ def legacy_extraction_config(settings: Settings) -> ExtractionConfig:
         probe=False,
     )
     return ExtractionConfig(
-        default_profile=LEGACY_PROFILE,
-        fallback=(),
+        pool=(LEGACY_PROFILE,),
         profiles={LEGACY_PROFILE: profile},
         policy=_policy(_ReconcilerModel(), settings),
         source="SCRAPPY_LLM_* settings (no extraction.yaml)",

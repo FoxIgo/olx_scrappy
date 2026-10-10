@@ -225,7 +225,7 @@ def test_relevance_needs_exactly_one_flag_and_a_known_link(ran: CliEnv) -> None:
 
 def test_extract_status_force_and_requeue_alias(ran: CliEnv) -> None:
     status = ran.ok("extract")
-    assert "0 offer(s) waiting" in status and "custom (default)" in status
+    assert "0 offer(s) waiting" in status and "custom" in status and "lane" in status
     assert "Nothing to queue" in ran.ok("extract", "requeue")
     assert "marked 3" in ran.ok("extract", "requeue", "--category", "laptop", "--force")
 
@@ -249,7 +249,7 @@ def test_extract_errors_are_clean(ran: CliEnv) -> None:
 
 def test_extract_profiles_shows_health_without_network(ran: CliEnv) -> None:
     out = ran.ok("extract", "profiles")
-    assert "custom (default)" in out and "ok: injected extractor" in out
+    assert "custom" in out and "lane" in out and "ok: injected extractor" in out
 
 
 def test_db_upgrade(env: CliEnv) -> None:
@@ -269,7 +269,7 @@ def test_missing_openrouter_key_leaves_a_backlog_that_heals_once_a_profile_works
     assert "No extraction profile is available" in stuck
     assert "OPENROUTER_API_KEY is not set" in stuck.replace("\n", " ")
     profiles = env.ok("extract", "profiles", with_extractor=False)
-    assert "openrouter (default)" in profiles and "UNAVAILABLE" in profiles
+    assert "lane" in profiles and "UNAVAILABLE" in profiles
     assert "SCRAPPY_LLM_* settings" in profiles.replace("\n", " ")
 
     # discovery data is kept; nothing is extracted yet, nothing was penalized

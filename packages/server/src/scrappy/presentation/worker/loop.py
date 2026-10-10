@@ -55,6 +55,8 @@ class ExtractorStats:
     """Offers claimed and settled by reconcile ticks (stored, failed, released, stale)."""
     batches_submitted: int = 0
     batches_finished: int = 0
+    stored_by_profile: dict[str, int] = field(default_factory=dict[str, int])
+    """Stored extractions per pool lane."""
     notes: list[str] = field(default_factory=list[str])
     unavailable: bool = False
     """The last tick had work but no profile could take it."""
@@ -65,6 +67,8 @@ class ExtractorStats:
             self.stored += report.stored
             self.failed += report.failed
             self.processed += report.processed
+            for name, count in report.stored_by_profile.items():
+                self.stored_by_profile[name] = self.stored_by_profile.get(name, 0) + count
             self.batches_submitted += report.batches_submitted
             self.unavailable = report.unavailable
         else:
@@ -213,7 +217,7 @@ async def _start_extractor(app: Services, *, probe: bool) -> None:
     for note in report.notes:
         log.info("batch recovery", note=note)
     selector = app.reconcile_extractions.selector
-    for name in app.profiles.fallback:
+    for name in app.profiles.pool:
         health = await selector.health(name, refresh=True, probe=probe)
         fields: dict[str, object] = {"profile": name, "detail": health.detail}
         if health.effective_structured_output is not None:
@@ -298,6 +302,10 @@ def _log_extraction(report: ReconcileReport | PollReport) -> None:
         )
 
 
+MAX_SHORT_BLOCK_SECONDS = 300.0
+MAX_SHORT_WAITS = 5
+
+
 async def extract_until_idle(
     app: Services,
     *,
@@ -322,6 +330,7 @@ async def extract_until_idle(
         else app.extraction_policy.poll_interval.total_seconds()
     )
     stats = ExtractorStats()
+    short_waits = 0
     await app.poll_batches(recover=True)
     while not stop.is_set():
         remaining = None if limit is None else limit - stats.processed
@@ -335,7 +344,19 @@ async def extract_until_idle(
         if on_tick:
             on_tick(report)
         if report.unavailable:
-            break
+            # Every lane is blocked. A short block (a per-minute limit) is waited out, a daily
+            # one (hours) ends the run. Bounded so a lane that never recovers cannot hang it.
+            pause = report.retry_in
+            if (
+                pause is None
+                or pause > MAX_SHORT_BLOCK_SECONDS
+                or short_waits >= MAX_SHORT_WAITS
+                or stop.is_set()
+            ):
+                break
+            short_waits += 1
+            await _sleep_or_stop(stop, pause + 1.0)
+            continue
         if report.did_work:
             continue
         if not wait or not await app.poll_batches.open_batches():

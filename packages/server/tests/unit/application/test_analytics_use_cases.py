@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any
 
@@ -31,23 +32,33 @@ from scrappy.domain.offer import (
     TrackedField,
 )
 from scrappy.domain.run import RunStatus, ScrapeRun
+from scrappy.domain.scoring import Strategy
 from scrappy.domain.search import SavedSearch, SearchName, SearchOffer
 from scrappy.domain.shared import RunId, SourceId
 from tests.unit.builders import LAPTOP, T0, at, catalog, oid
-from tests.unit.fakes import InMemoryAnalyticsQueries, InMemoryStore, StaticCategoryProvider
+from tests.unit.fakes import (
+    InMemoryAnalyticsQueries,
+    InMemoryScoringQueries,
+    InMemoryStore,
+    StaticCategoryProvider,
+    StaticScoringProvider,
+)
 
 S = SearchName("laptops")
 HASH = ContentHash("a" * 64)
 
 
 class World:
-    def __init__(self) -> None:
+    def __init__(self, strategies: Mapping[str, Strategy] | None = None) -> None:
         self.store = InMemoryStore()
         self.queries = InMemoryAnalyticsQueries(self.store)
+        self.scoring_queries = InMemoryScoringQueries()
         self.q: QueryUseCases = build_query_use_cases(
             uow=self.store.uow,
             queries=self.queries,
             categories=StaticCategoryProvider(catalog()),
+            scoring=StaticScoringProvider(strategies or {}),
+            scoring_queries=self.scoring_queries,
         )
         self.store.state.searches[S] = SavedSearch(
             S, SourceId("olx_pl"), "https://x.test", LAPTOP, T0

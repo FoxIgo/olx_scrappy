@@ -153,7 +153,8 @@ local models (Ollama / LM Studio on the user's GPU) and free tiers (e.g. Google 
 Studio) must be first-class options.
 
 Configuration in `config/extraction.yaml`: named **profiles**, one default, and an
-optional fallback chain:
+optional fallback chain (the chain was replaced by a parallel `pool` in section 9; the
+snippet below shows the original shape):
 
 ```yaml
 default_profile: local
@@ -229,10 +230,69 @@ profiles:
   --profiles a,b --sample 30` (later: same offers through several profiles, compare fill
   rate, agreement, speed, cost).
 
+### 9. Parallel pool of profiles (user decision, 2026-10-10)
+
+**Supersedes the sequential chain** (`default_profile` + `fallback`) of section 8. A chain
+wastes capacity: re-extracting 877 offers took ~1 h at ~14/min while two Gemma profiles
+(14,000 requests/day each) sat idle. Every free tier has its own quota, so all of them are
+used **at the same time**; total throughput is the sum of the lanes.
+
+- **Config:** `pool: [profile, ...]` replaces `default_profile` and `fallback` (the loader
+  refuses the old keys with a pointer to `pool`). The first pool member is the "default"
+  profile (backlog counting, `q health`). `scrappy extract --profile X` still means "only X".
+- **Lanes.** One reconcile tick starts one lane per pool profile, concurrently
+  (`asyncio.gather`). A lane takes chunks (2 x `concurrency` offers) from the **shared
+  backlog** with the existing lease mechanism (`claim` leases the offer, so lanes never take
+  the same one) and works within its own `RequestPacer` (`rate_limit`), `concurrency` and
+  `daily_limit`. A faster profile naturally claims more. There is no weight/priority field:
+  speed is the priority.
+- **A blocked lane** (daily limit used up, quota block, unhealthy, 402) stops claiming and
+  gives its claimed offers back without penalty; the others continue. Offers it released are
+  offered to the other lanes again within the same tick. It resumes by itself once unblocked
+  (the block is persisted per profile). Forced work pinned to a profile outside the pool
+  (`extract force --profile`) gets a lane of its own, restricted to the pinned offers.
+- **End of the run.** `ReconcileReport.unavailable` is true when there is a backlog but every
+  lane that had work is blocked. `extract --inline` / `extract_until_idle` then stops, except
+  that when the soonest block is short (a per-minute pause of at most 5 min,
+  `report.retry_in`) it waits for it, at most 5 times. `--max N` is one claim budget shared
+  by all lanes.
+- **Shared quotas.** Profiles may name a `quota_group` defined once under `quota_groups:`
+  (`daily_limit`, `quota_timezone`). The group's counter lives in the same
+  `extraction_profile_status` table under the key `group:<name>`; every member checks it,
+  counts into it, and a per-day 429 blocks the whole group until the next reset. Calls in
+  flight are subtracted from the remaining requests, so concurrent lanes cannot overshoot
+  the limit. A profile in a group must not set its own `daily_limit`/`quota_timezone`.
+- **OpenRouter free models.** `openrouter-free-nemotron` (`nvidia/nemotron-3-super-120b-a12b:free`,
+  `openai_compatible` against `https://openrouter.ai/api/v1`, 20/min, concurrency 2) is in
+  the pool; all `:free` models share one account-wide daily limit, configured as the group
+  `openrouter_free` with **50/day**. Raise it to 1000/day only if the account has ever bought
+  >= $10 of credits (unknown, so the safe value is configured). OpenRouter does not document
+  the reset time; UTC midnight is an assumption (a per-day 429 blocks the group until then,
+  and a wrong guess only means one more 429 after the real reset, no data is affected).
+- **Upstream 429.** A free model also answers 429 "temporarily rate-limited upstream"
+  (`metadata.limit_source = upstream_provider_shared_pool`): not our quota and not per day.
+  It is classified `QUOTA` with `retry_after_seconds = 60` and **no in-adapter wait**, so
+  that lane pauses for a minute (offers released without penalty) while the others go on.
+- **Safety: never pay by accident.** A profile on OpenRouter (provider `openrouter`, or a
+  base URL containing `openrouter.ai`) whose model id does not end in `:free` is paid. The
+  loader refuses it as a pool member unless the profile says `paid: true`. The paid
+  `openrouter` profile stays defined outside the pool; the no-file fallback profile (derived
+  from `SCRAPPY_LLM_*`) is `paid: true` because the user configured it knowingly.
+- **Reporting.** `extract` / `extract profiles` show a `Pool` column (`lane`) and the day
+  count of the quota key with the group name; `q health` lists `pool`; `extract --inline`
+  prints stored offers per lane.
+- **Not done: "retry on a different profile".** An offer whose answer was invalid on profile
+  A should preferably be retried by B. There is no place to record the failing profile
+  (`ExtractionState` has no such column; a migration was out of scope). In practice the
+  retry backoff (1 min, 2, 4, ...) lets another lane claim it first with high probability.
+  Possible follow-up: `last_failed_profile` on `extraction_state` and a claim filter.
+- No weights, no cross-profile token-per-minute limiter, and a group has no shared
+  per-minute pacer (only one OpenRouter free profile exists today).
+
 ## Not chosen
 
-- **Parallel synchronous calls:** they solve latency but not cost, and need rate-limit
-  handling. Batch gives ~50% lower cost with acceptable latency, because nothing waits
+- **Parallel synchronous calls** (for one profile; parallel *profiles* are section 9):
+  they solve latency but not cost, and need rate-limit handling. Batch gives ~50% lower cost with acceptable latency, because nothing waits
   on extraction any more.
 - **Several offers per prompt** (prompt-level batching): one bad answer would affect the
   whole group and per-offer validation gets harder. Provider batching gets the

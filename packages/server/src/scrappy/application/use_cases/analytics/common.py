@@ -66,6 +66,8 @@ class ScopedRows:
     """The schema ``--where`` was typed against (``--category``, else the search's)."""
     category_name: CategoryName | None
     notes: list[str]
+    dropped_by_filter: int = 0
+    """Offers removed by ``--where`` (price / title / attribute predicates)."""
 
 
 def relevance_of(row: OfferRow, search: SearchName | None) -> bool | None:
@@ -103,6 +105,18 @@ class ScopeResolver:
 
     async def catalog(self) -> CategoryCatalog:
         return await self._categories.catalog()
+
+    async def count_outside_category(self, scope: QueryScope) -> int:
+        """Offers that match ``scope`` except for ``scope.category``: extracted as another
+        category, or not extracted yet (they can never be seen through a category)."""
+        if scope.category is None:
+            return 0
+        base = OfferScope(
+            search=scope.search, relevant_only=scope.relevant_only, statuses=scope.statuses
+        )
+        everything = await self._queries.count_offers(base)
+        inside = await self._queries.count_offers(replace(base, category=scope.category))
+        return everything - inside
 
     async def rows(self, scope: QueryScope) -> ScopedRows:
         catalog = await self._categories.catalog()
@@ -147,8 +161,11 @@ class ScopeResolver:
             if scope.search is None:
                 notes.append("without --search, relevant means relevant in at least one search")
 
+        dropped_by_filter = 0
         if typed_pseudo:
-            rows = [r for r in rows if _matches(typed_pseudo, _pseudo_values(r))]
+            kept = [r for r in rows if _matches(typed_pseudo, _pseudo_values(r))]
+            dropped_by_filter += len(rows) - len(kept)
+            rows = kept
         if typed_attributes:
             extracted = [r for r in rows if r.category is not None]
             if len(extracted) < len(rows):
@@ -156,9 +173,11 @@ class ScopeResolver:
                     f"{len(rows) - len(extracted)} offer(s) have no extraction yet; "
                     "they are excluded by the attribute filters"
                 )
-            rows = [r for r in extracted if _matches(typed_attributes, r.attributes)]
+            kept = [r for r in extracted if _matches(typed_attributes, r.attributes)]
+            dropped_by_filter += len(extracted) - len(kept)
+            rows = kept
         rows.sort(key=lambda r: (-seen_at(r, scope.search).timestamp(), str(r.offer_id)))
-        return ScopedRows(rows, catalog, category, category_name, notes)
+        return ScopedRows(rows, catalog, category, category_name, notes, dropped_by_filter)
 
 
 def _matches(
