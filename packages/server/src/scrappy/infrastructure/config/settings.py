@@ -13,18 +13,44 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 DEFAULT_LLM_MODEL = "openai/gpt-4o-mini"
 """Cheap and reliable at JSON structured output on OpenRouter. Override: SCRAPPY_LLM_MODEL."""
 DEFAULT_LLM_BASE_URL = "https://openrouter.ai/api/v1"
+HOME_ENV = "SCRAPPY_HOME"
+
+
+def find_home() -> Path:
+    """The folder relative paths (``data``, ``config``, ``.env``) are resolved against.
+
+    ``SCRAPPY_HOME`` if set; otherwise the server project this package runs from (the first
+    parent with ``pyproject.toml`` and ``config/``, i.e. ``packages/server`` in a checkout);
+    otherwise the current directory (an installed package, e.g. in Docker, where the paths
+    are absolute anyway). Before this, everything was relative to the current directory, so
+    running ``scrappy`` from the repo root silently created a second database there.
+    """
+    explicit = os.environ.get(HOME_ENV)
+    if explicit:
+        return Path(explicit).resolve()
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "pyproject.toml").is_file() and (parent / "config").is_dir():
+            return parent
+    return Path.cwd()
+
+
+HOME = find_home()
+
+
+def _anchored(path: Path) -> Path:
+    return path if path.is_absolute() else HOME / path
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="SCRAPPY_",
-        env_file=".env",
+        env_file=HOME / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
         populate_by_name=True,
     )
 
-    # --- paths
+    # --- paths: relative ones are relative to HOME (``packages/server``), not to the cwd
     data_dir: Path = Path("data")
     config_dir: Path = Path("config")
     database_url: str = ""
@@ -71,6 +97,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _derive_defaults(self) -> Settings:
+        self.data_dir = _anchored(self.data_dir)
+        self.config_dir = _anchored(self.config_dir)
+        if self.archive_dir is not None:
+            self.archive_dir = _anchored(self.archive_dir)
         if not self.database_url:
             posix = self.data_dir.resolve().as_posix()
             self.database_url = f"sqlite+aiosqlite:///{posix}/scrappy.db"

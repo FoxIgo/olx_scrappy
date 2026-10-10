@@ -42,8 +42,11 @@ Data is stored in `./data`; config is read from `packages/server/config` (mounte
 ## Usage
 
 Categories (`config/categories.yaml`) and sources (`config/sources.yaml`) are read from
-`SCRAPPY_CONFIG_DIR` (default `./config`); data (SQLite, raw page archive) goes to
-`SCRAPPY_DATA_DIR` (default `./data`). The database is migrated automatically on every start.
+`SCRAPPY_CONFIG_DIR` (default `config`); data (SQLite, raw page archive, benchmark
+snapshots) goes to `SCRAPPY_DATA_DIR` (default `data`). Relative paths and `.env` are
+resolved against `packages/server` (or `SCRAPPY_HOME` if set), **not** the current folder,
+so `scrappy` uses the same database `packages/server/data/scrappy.db` wherever you run it.
+The database is migrated automatically on every start.
 
 ```sh
 cd packages/server
