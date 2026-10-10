@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
+from typing import cast
 
 from scrappy.domain.shared import InvalidValueError, validate_slug
 
-type AttributeValue = str | int | Decimal | bool
-"""A typed attribute value. ``number`` attributes use Decimal (exact, comparable)."""
+type AttributeValue = str | int | Decimal | bool | tuple[str, ...]
+"""A typed attribute value. ``number`` attributes use Decimal (exact, comparable);
+``enum_list`` attributes are a non-empty tuple of enum values (an empty list is stored as null)."""
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -35,6 +37,8 @@ class AttributeType(StrEnum):
     NUMBER = "number"
     BOOLEAN = "boolean"
     ENUM = "enum"
+    ENUM_LIST = "enum_list"
+    """A list of values of a fixed set, e.g. the damaged parts of a laptop."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,10 +51,17 @@ class AttributeSpec:
 
     def __post_init__(self) -> None:
         validate_slug(self.name, "attribute name")
-        if self.type is AttributeType.ENUM and not self.values:
+        has_values = self.type in (AttributeType.ENUM, AttributeType.ENUM_LIST)
+        if has_values and not self.values:
             raise InvalidValueError(f"enum attribute {self.name!r} needs values")
-        if self.type is not AttributeType.ENUM and self.values:
+        if not has_values and self.values:
             raise InvalidValueError(f"only enum attributes take values ({self.name!r})")
+
+    def coerce_element(self, raw: object) -> str:
+        """One value of an ``enum_list`` attribute (a filter operand such as ``screen``)."""
+        if self.type is AttributeType.ENUM_LIST and isinstance(raw, str) and raw in self.values:
+            return raw
+        raise InvalidValueError(f"{raw!r} is not one of {list(self.values)} for {self.name!r}")
 
     def coerce(self, raw: object) -> AttributeValue:
         """Validate/convert one raw value (e.g. from LLM JSON or a CLI filter).
@@ -65,6 +76,11 @@ class AttributeSpec:
             case AttributeType.ENUM:
                 if isinstance(raw, str) and raw in self.values:
                     return raw
+            case AttributeType.ENUM_LIST:
+                if isinstance(raw, list | tuple):
+                    items = cast("Sequence[object]", raw)
+                    if all(isinstance(item, str) and item in self.values for item in items):
+                        return tuple(dict.fromkeys(cast("Sequence[str]", items)))
             case AttributeType.BOOLEAN:
                 if isinstance(raw, bool):
                     return raw
@@ -128,7 +144,8 @@ class Category:
         result: dict[str, AttributeValue | None] = {}
         for spec in self.attributes:
             value = raw.get(spec.name)
-            result[spec.name] = None if value is None else spec.coerce(value)
+            coerced = None if value is None else spec.coerce(value)
+            result[spec.name] = None if coerced == () else coerced  # [] = nothing to record
         return result
 
 

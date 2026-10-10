@@ -185,7 +185,9 @@ class Rank:
         below = 0
         for row, amount, currency in priced:
             components = by_offer.get(row.offer_id, {})
-            facts: dict[str, FactValue] = dict(row.attributes)
+            facts: dict[str, FactValue] = {
+                k: v for k, v in row.attributes.items() if not isinstance(v, tuple)
+            }  # lists only filter
             facts.update({key: fact.score for key, fact in components.items()})
             score = score_offer(strategy, facts)
             if score.coverage + 1e-9 < min_coverage:

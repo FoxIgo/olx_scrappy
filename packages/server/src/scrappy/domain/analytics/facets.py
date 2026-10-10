@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import TypeGuard
 
 from scrappy.domain.category import AttributeValue
 
@@ -35,7 +36,7 @@ class FacetCounts:
     numeric: NumericRange | None
 
 
-def _is_number(value: AttributeValue) -> bool:
+def _is_number(value: AttributeValue) -> TypeGuard[int | Decimal]:
     return isinstance(value, int | Decimal) and not isinstance(value, bool)
 
 
@@ -47,6 +48,9 @@ def count_facet(
     for value in values:
         if value is None:
             nulls += 1
+        elif isinstance(value, tuple):  # enum_list: one count per element
+            for item in value:
+                counts[item] = counts.get(item, 0) + 1
         else:
             counts[value] = counts.get(value, 0) + 1
     ordered = tuple(sorted(counts.items(), key=lambda kv: (-kv[1], str(kv[0]))))

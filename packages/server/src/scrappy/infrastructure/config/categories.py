@@ -32,16 +32,17 @@ from scrappy.infrastructure.config.yaml_io import read_yaml
 class _AttributeModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    type: Literal["string", "integer", "number", "boolean", "enum"]
+    type: Literal["string", "integer", "number", "boolean", "enum", "enum_list"]
     description: str | None = None
     values: list[str] = Field(default_factory=list[str])
 
     @model_validator(mode="after")
     def _check_values(self) -> _AttributeModel:
-        if self.type == "enum" and not self.values:
-            raise ValueError("enum attributes need a non-empty 'values' list")
-        if self.type != "enum" and self.values:
-            raise ValueError("'values' is only allowed for enum attributes")
+        listed = self.type in ("enum", "enum_list")
+        if listed and not self.values:
+            raise ValueError("enum and enum_list attributes need a non-empty 'values' list")
+        if not listed and self.values:
+            raise ValueError("'values' is only allowed for enum and enum_list attributes")
         if len(set(self.values)) != len(self.values):
             raise ValueError("'values' contains duplicates")
         return self

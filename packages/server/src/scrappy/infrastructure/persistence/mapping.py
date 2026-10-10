@@ -79,10 +79,15 @@ def _price_from_json(data: Mapping[str, Any]) -> Price:
 def attributes_to_json(attributes: Mapping[str, AttributeValue | None]) -> dict[str, Any]:
     """Decimals become ``{"$decimal": "15.6"}`` so they survive JSON exactly and stay
     distinguishable from ints, bools and strings."""
-    return {
-        name: {"$decimal": str(v)} if isinstance(v, Decimal) else v
-        for name, v in attributes.items()
-    }
+    return {name: _attribute_to_json(v) for name, v in attributes.items()}
+
+
+def _attribute_to_json(value: AttributeValue | None) -> Any:
+    if isinstance(value, Decimal):
+        return {"$decimal": str(value)}
+    if isinstance(value, tuple):
+        return list(value)
+    return value
 
 
 def attributes_from_json(data: Mapping[str, Any]) -> dict[str, AttributeValue | None]:
@@ -90,6 +95,8 @@ def attributes_from_json(data: Mapping[str, Any]) -> dict[str, AttributeValue | 
     for name, value in data.items():
         if isinstance(value, dict):
             result[name] = Decimal(cast("dict[str, str]", value)["$decimal"])
+        elif isinstance(value, list):
+            result[name] = tuple(cast("list[str]", value))
         else:
             result[name] = cast("AttributeValue | None", value)
     return result

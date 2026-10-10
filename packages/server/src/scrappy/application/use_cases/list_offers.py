@@ -8,7 +8,7 @@ from scrappy.application.errors import InvalidRequestError, NotFoundError
 from scrappy.application.ports.queries import OfferFilter, OfferListItem, OfferQueries
 from scrappy.application.ports.system import CategoryProvider
 from scrappy.application.ports.unit_of_work import UnitOfWorkFactory
-from scrappy.domain.category import Category, CategoryName
+from scrappy.domain.category import AttributeType, Category, CategoryName
 from scrappy.domain.extraction import AttributePredicate, Comparison
 from scrappy.domain.shared import InvalidValueError
 
@@ -64,6 +64,19 @@ def typed_predicates(
             raise InvalidRequestError(
                 f"category {category.name} has no attribute {predicate.attribute!r}"
             )
+        text_ops = (Comparison.CONTAINS, Comparison.NOT_CONTAINS)
+        if spec.type is AttributeType.ENUM_LIST:
+            if predicate.op not in text_ops:
+                raise InvalidRequestError(
+                    f"{predicate.attribute!r} is a list: use ~ (has) or !~ (lacks), "
+                    f"e.g. {predicate.attribute}!~{spec.values[0]}"
+                )
+            try:
+                element = spec.coerce_element(predicate.value)
+            except InvalidValueError as error:
+                raise InvalidRequestError(str(error)) from error
+            typed.append(AttributePredicate(predicate.attribute, predicate.op, element))
+            continue
         try:
             value = spec.coerce(predicate.value)
         except InvalidValueError as error:
@@ -73,7 +86,9 @@ def typed_predicates(
             raise InvalidRequestError(
                 f"{predicate.op.value} needs a numeric attribute ({predicate.attribute!r})"
             )
-        if predicate.op is Comparison.CONTAINS and not isinstance(value, str):
-            raise InvalidRequestError(f"~ needs a text attribute ({predicate.attribute!r})")
+        if predicate.op in text_ops and not isinstance(value, str):
+            raise InvalidRequestError(
+                f"{predicate.op.value} needs a text attribute ({predicate.attribute!r})"
+            )
         typed.append(AttributePredicate(predicate.attribute, predicate.op, value))
     return tuple(typed)

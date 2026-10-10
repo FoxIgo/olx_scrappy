@@ -61,6 +61,8 @@ def group_value(value: AttributeValue) -> GroupValue:
         return value
     if isinstance(value, str):
         return value.casefold()
+    if isinstance(value, tuple):
+        return ", ".join(sorted(item.casefold() for item in value))
     return Decimal(value)
 
 

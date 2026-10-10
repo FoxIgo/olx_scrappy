@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
-from scrappy.domain.category import OTHER_CATEGORY
+from scrappy.domain.category import (
+    OTHER_CATEGORY,
+    AttributeSpec,
+    AttributeType,
+    Category,
+)
 from scrappy.infrastructure.extraction.prompt import (
     OFFER_BEGIN,
     OFFER_END,
@@ -123,3 +129,61 @@ def test_prompt_delimits_untrusted_text_and_keeps_it_out_of_system() -> None:
 def test_prompt_includes_schema_when_not_enforced() -> None:
     messages = build_messages(make_input(), response_schema=schema().json_schema)
     assert "JSON Schema" in messages[1]["content"]
+
+
+def damage_category() -> Category:
+    return Category(
+        LAPTOP,
+        3,
+        (
+            AttributeSpec("ram_gb", AttributeType.INTEGER),
+            AttributeSpec(
+                "damage",
+                AttributeType.ENUM_LIST,
+                "parts that are broken",
+                values=("screen", "hinge", "unknown"),
+            ),
+        ),
+    )
+
+
+def damage_schema() -> ExtractionSchema:
+    return ExtractionSchema((damage_category(),))
+
+
+def test_enum_list_schema_is_a_nullable_array_of_enum_strings() -> None:
+    laptop = damage_schema().json_schema["properties"]["attributes"]["anyOf"][0]
+    damage = laptop["properties"]["damage"]
+    assert damage["type"] == ["array", "null"]
+    assert damage["items"] == {"type": "string", "enum": ["screen", "hinge", "unknown"]}
+    assert "damage" in laptop["required"]
+    json.dumps(laptop)
+
+
+def test_enum_list_validation() -> None:
+    ok = damage_schema().validate(
+        {"category": "laptop", "attributes": {"damage": ["screen", "hinge"]}, "notes": None}
+    )
+    assert ok.attributes["damage"] == ["screen", "hinge"]
+    for bad in ("screen", ["keyboard"], [1]):
+        with pytest.raises(InvalidAnswerError, match=r"attributes.damage"):
+            damage_schema().validate(
+                {"category": "laptop", "attributes": {"damage": bad}, "notes": None}
+            )
+
+
+def test_enum_list_empty_counts_as_not_stated() -> None:
+    with pytest.raises(InvalidAnswerError, match="every attribute"):
+        damage_schema().validate(
+            {"category": "laptop", "attributes": {"ram_gb": None, "damage": []}, "notes": None}
+        )
+    answer = damage_schema().validate(
+        {"category": "laptop", "attributes": {"ram_gb": 8, "damage": []}, "notes": None}
+    )
+    assert answer.attributes["damage"] == []
+
+
+def test_prompt_renders_enum_list_attributes() -> None:
+    request = replace(make_input(), categories=(damage_category(),))
+    user = build_messages(request)[1]["content"]
+    assert "damage (JSON array of any of: screen, hinge, unknown; [] or null if none)" in user

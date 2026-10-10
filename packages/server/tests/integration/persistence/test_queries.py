@@ -74,8 +74,19 @@ async def populate(factory: Factory) -> None:
         attrs = {
             "1": ("laptop", {"gpu": "GTX 1650", "ram_gb": 16, "screen_in": Decimal("15.6")}),
             "2": ("laptop", {"gpu": "RTX 3060", "ram_gb": 32, "screen_in": Decimal("17")}),
-            "3": ("laptop", {"gpu": "gtx 1050", "ram_gb": 8, "screen_in": None}),
-            "4": ("laptop", {"gpu": None, "ram_gb": 16, "screen_in": Decimal("13.3")}),
+            "3": (
+                "laptop",
+                {"gpu": "gtx 1050", "ram_gb": 8, "screen_in": None, "damage": ("screen",)},
+            ),
+            "4": (
+                "laptop",
+                {
+                    "gpu": None,
+                    "ram_gb": 16,
+                    "screen_in": Decimal("13.3"),
+                    "damage": ("screen", "motherboard"),
+                },
+            ),
             "5": ("phone", {"model": "iPhone", "new": True}),
             "6": ("phone", {"model": "Galaxy S10", "new": False}),
             "10": ("laptop", {"gpu": "Radeon", "ram_gb": 64}),
@@ -118,6 +129,10 @@ FILTERS: dict[str, OfferFilter] = {
     "attr-and": OfferFilter(
         search=S1,
         attributes=(pred("ram_gb", Comparison.GE, 16), pred("gpu", Comparison.CONTAINS, "rtx")),
+    ),
+    "attr-list-has": OfferFilter(attributes=(pred("damage", Comparison.CONTAINS, "screen"),)),
+    "attr-list-lacks": OfferFilter(
+        attributes=(pred("damage", Comparison.NOT_CONTAINS, "motherboard"),)
     ),
     "attr-not-in-latest": OfferFilter(attributes=(pred("gpu", Comparison.EQ, "OLD"),)),
     "everything": OfferFilter(
@@ -196,3 +211,24 @@ async def test_reference_filters_are_not_vacuous(
     item = next(i for i in everything if str(i.offer.id) == "olx_pl:1")
     assert item.extraction is not None and item.extraction.attributes["gpu"] == "GTX 1650"
     assert item.link is None
+
+
+async def test_list_attributes_round_trip_and_filter_in_sql(
+    both: tuple[InMemoryOfferQueries, SqlOfferQueries],
+) -> None:
+    _, sql = both
+
+    def ids(items: list[OfferListItem]) -> set[str]:
+        return {str(i.offer.id) for i in items}
+
+    has = await sql.list_offers(
+        OfferFilter(attributes=(pred("damage", Comparison.CONTAINS, "screen"),))
+    )
+    assert ids(has) == {"olx_pl:3", "olx_pl:4"}
+    stored = next(i for i in has if str(i.offer.id) == "olx_pl:4")
+    assert stored.extraction is not None
+    assert stored.extraction.attributes["damage"] == ("screen", "motherboard")
+    lacks = await sql.list_offers(
+        OfferFilter(attributes=(pred("damage", Comparison.NOT_CONTAINS, "motherboard"),))
+    )
+    assert ids(lacks) == {"olx_pl:3"}  # null damage never matches, 4 has motherboard

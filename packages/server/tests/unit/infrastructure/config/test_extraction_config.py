@@ -191,10 +191,11 @@ def test_the_shipped_example_file_is_valid(tmp_path: Path) -> None:
     data = yaml.safe_load(REPO_CONFIG.read_text(encoding="utf-8"))
     config = parse_extraction_config(data, path=REPO_CONFIG, settings=settings(tmp_path))
     google = ("gemini-lite", "gemini-lite-31", "gemma-31b", "gemma-26b")
-    assert config.pool == (*google, "openrouter-free-nemotron")
+    # everything runs in parallel, including the cheap paid ling profile and local LM Studio
+    assert config.pool == (*google, "openrouter-free-nemotron", "openrouter", "lmstudio")
     assert config.profiles["lmstudio"].extra_body == {"reasoning_effort": "none"}
-    # lmstudio (slow) and openrouter (paid) are defined but not in the pool
-    assert {"lmstudio", "openrouter"} <= set(config.profiles) - set(config.pool)
+    paid = config.profiles["openrouter"]
+    assert (paid.paid, paid.model) == (True, "inclusionai/ling-3.0-flash-vl")
     free = config.profiles["openrouter-free-nemotron"]
     assert free.model == "nvidia/nemotron-3-super-120b-a12b:free"
     assert free.quota_group == "openrouter_free"

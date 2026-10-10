@@ -248,6 +248,30 @@ state it.
   "i7 11th gen" are not estimated from a family median, in facts or in strategies. The term
   counts as missing and lowers `coverage`.
 
+### 7. Damaged laptops are their own strategy (user, 2026-10-10)
+
+- **Facts vs interpretation.** Laptop schema v3 adds `damage` (an `enum_list` attribute: the
+  damaged or missing parts the offer states: screen, keyboard, touchpad, battery, hinge,
+  housing, charging_port, ports, speakers, camera, wifi, storage_missing, ram_missing,
+  charger_missing, os_missing, bios_locked, motherboard, gpu, no_power, liquid_damage,
+  `unknown` = "damaged, not said what") and `damage_note` (free text). An empty list is stored
+  as null. Whether a fault is *fixable* is interpretation and lives only in the `repair`
+  strategy. `condition` keeps its meaning: "do naprawy" with a stated fixable fault is
+  `damaged`; "na części" / "nie działa" / "nie włącza się" is `for_parts`.
+- **List attributes** (`type: enum_list`, `values` required): JSON schema = nullable array of
+  enum strings; each element is validated, duplicates removed. They cannot be scoring terms,
+  only filters. `q facets --attr damage` counts per element.
+- **Filter syntax.** `~` on a list means "has this element" (exact element, case-insensitive),
+  and the new `!~` means "lacks it" (on text: does not contain the substring). A null
+  attribute matches neither. "damage has none of [a, b]" is written as repeated filters:
+  `damage!~a`, `damage!~b`. `=`/`!=`/ordering on a list are rejected with a hint.
+- **Strategies.** `gaming`, `work`, `balanced` and `battery` exclude both `for_parts` and
+  `damaged`. `repair` requires `condition=damaged`, excludes `motherboard`, `gpu`, `no_power`,
+  `liquid_damage`, `bios_locked` and `unknown` (an unspecified fault is a risk: a deliberate
+  choice; a damaged offer with no stated `damage` also drops out), requires `ram_gb>=8` and
+  `price>=100` (damaged ThinkPads are often 150-400 PLN), and scores the hardware like
+  `balanced` (no condition term; value = performance / price).
+
 ## Implementation slices
 
 Slice 1 is done (laptop schema v2 in `config/categories.yaml`; a real category with every

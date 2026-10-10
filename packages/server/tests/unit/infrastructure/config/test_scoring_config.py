@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scrappy.domain.category import CategoryCatalog
+from scrappy.application.use_cases.list_offers import typed_predicates
+from scrappy.domain.category import CategoryCatalog, CategoryName
 from scrappy.domain.scoring import Transform
 from scrappy.infrastructure.config.categories import load_categories
 from scrappy.infrastructure.config.errors import ConfigError
@@ -33,7 +34,7 @@ def strategy(**overrides: object) -> dict[str, object]:
 
 def test_shipped_scoring_yaml_is_valid_against_shipped_categories(catalog: CategoryCatalog) -> None:
     strategies = load_scoring(REPO / "scoring.yaml", catalog)
-    assert {"gaming", "work", "balanced", "battery"} <= set(strategies)
+    assert {"gaming", "work", "balanced", "battery", "repair"} <= set(strategies)
     for item in strategies.values():
         assert item.total_weight == pytest.approx(1.0), item.name
 
@@ -81,6 +82,9 @@ def test_parses_terms_aliases_defaults_and_filters(catalog: CategoryCatalog) -> 
         (strategy(filters=["colour=red"]), "colour"),
         (strategy(filters=["ram_gb 8"]), "cannot parse filter"),
         (strategy(filters=["gpu>=big"]), "numeric attribute"),
+        (strategy(filters=["damage=screen"]), "is a list"),
+        (strategy(filters=["damage!~keyboard_x"]), "not one of"),
+        (strategy(terms={"damage": {"weight": 1, "baseline": 1}}), "is a list"),
         ({"strategies": {"s": {"category": "laptop"}}}, "terms"),
     ],
 )
@@ -109,3 +113,54 @@ def test_empty_file_means_no_strategies(catalog: CategoryCatalog, tmp_path: Path
 def test_missing_file_is_a_config_error(catalog: CategoryCatalog, tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="not found"):
         load_scoring(tmp_path / "scoring.yaml", catalog)
+
+
+def passes(name: str, attributes: dict[str, object], catalog: CategoryCatalog) -> bool:
+    """Do the strategy's attribute filters accept this offer? (price filters are skipped)"""
+    strategies = load_scoring(REPO / "scoring.yaml", catalog)
+    category = catalog.get(CategoryName("laptop"))
+    assert category is not None
+    wanted = tuple(p for p in strategies[name].filters if p.attribute != "price")
+    return all(p.matches(attributes) for p in typed_predicates(category, wanted))  # type: ignore[arg-type]
+
+
+def laptop(**attrs: object) -> dict[str, object]:
+    return {"ram_gb": 16, "condition": "used", **attrs}
+
+
+@pytest.mark.parametrize("name", ["gaming", "work", "balanced", "battery"])
+def test_regular_strategies_exclude_damaged_and_for_parts(
+    name: str, catalog: CategoryCatalog
+) -> None:
+    assert passes(name, laptop(), catalog)
+    assert not passes(name, laptop(condition="damaged"), catalog)
+    assert not passes(name, laptop(condition="for_parts"), catalog)
+
+
+@pytest.mark.parametrize(
+    ("attributes", "expected"),
+    [
+        (laptop(condition="damaged", damage=("screen",)), True),
+        (laptop(condition="damaged", damage=("screen", "battery", "charger_missing")), True),
+        (laptop(condition="damaged", damage=("screen", "motherboard")), False),
+        (laptop(condition="damaged", damage=("gpu",)), False),
+        (laptop(condition="damaged", damage=("no_power",)), False),
+        (laptop(condition="damaged", damage=("liquid_damage",)), False),
+        (laptop(condition="damaged", damage=("bios_locked",)), False),
+        (laptop(condition="damaged", damage=("unknown",)), False),
+        (laptop(condition="damaged"), False),  # damaged but nothing stated: a risk
+        (laptop(condition="used", damage=("screen",)), False),
+        (laptop(condition="for_parts", damage=("screen",)), False),
+        (laptop(condition="damaged", damage=("keyboard",), ram_gb=4), False),
+    ],
+)
+def test_repair_strategy_wants_fixable_damage(
+    attributes: dict[str, object], expected: bool, catalog: CategoryCatalog
+) -> None:
+    assert passes("repair", attributes, catalog) is expected
+
+
+def test_repair_keeps_cheap_offers_but_not_placeholders(catalog: CategoryCatalog) -> None:
+    repair = load_scoring(REPO / "scoring.yaml", catalog)["repair"]
+    (price,) = [p for p in repair.filters if p.attribute == "price"]
+    assert (price.op.value, price.value) == (">=", "100")

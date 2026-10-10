@@ -198,13 +198,18 @@ def _pseudo_values(row: OfferRow) -> dict[str, AttributeValue | None]:
 def _typed_pseudo(predicate: AttributePredicate) -> AttributePredicate:
     raw = str(predicate.value)
     if predicate.attribute == "price":
-        if predicate.op is Comparison.CONTAINS:
+        if predicate.op in (Comparison.CONTAINS, Comparison.NOT_CONTAINS):
             raise InvalidRequestError("~ needs a text field (price is numeric)")
         try:
             return AttributePredicate("price", predicate.op, Decimal(raw))
         except InvalidOperation:
             raise InvalidRequestError(f"price filter needs a number, got {raw!r}") from None
-    if predicate.op not in (Comparison.EQ, Comparison.NE, Comparison.CONTAINS):
+    if predicate.op not in (
+        Comparison.EQ,
+        Comparison.NE,
+        Comparison.CONTAINS,
+        Comparison.NOT_CONTAINS,
+    ):
         raise InvalidRequestError(
             f"{predicate.op.value} needs a numeric field ({predicate.attribute})"
         )

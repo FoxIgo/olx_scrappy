@@ -18,6 +18,7 @@ from scrappy.presentation.cli.filters import parse_where, parse_wheres
         ("ram_gb==16", AttributePredicate("ram_gb", Comparison.EQ, "16")),
         ("storage_type!=hdd", AttributePredicate("storage_type", Comparison.NE, "hdd")),
         ("gpu~gtx", AttributePredicate("gpu", Comparison.CONTAINS, "gtx")),
+        ("damage!~hinge", AttributePredicate("damage", Comparison.NOT_CONTAINS, "hinge")),
         ("  screen_in >= 15.6 ", AttributePredicate("screen_in", Comparison.GE, "15.6")),
         ('gpu~"GTX 1650"', AttributePredicate("gpu", Comparison.CONTAINS, "GTX 1650")),
         ("gpu~'rtx'", AttributePredicate("gpu", Comparison.CONTAINS, "rtx")),

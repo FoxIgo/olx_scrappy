@@ -16,7 +16,10 @@
 # not in the pool. SAFETY: an OpenRouter model whose id does not end in `:free` is paid; the
 # loader refuses it in the pool unless its profile says `paid: true`.
 # The first pool member is the "default" profile (backlog counting, `q health`).
-pool: [gemini-lite, gemini-lite-31, gemma-31b, gemma-26b, openrouter-free-nemotron]
+# Everything runs in parallel (user, 2026-10-10). `openrouter` is PAID but ~$0.03 per 1000 offers
+# (ling-3.0-flash-vl: $0.021/M in, $0.063/M out); `lmstudio` is local and simply idles
+# (unhealthy lane) when LM Studio isn't running.
+pool: [gemini-lite, gemini-lite-31, gemma-31b, gemma-26b, openrouter-free-nemotron, openrouter, lmstudio]
 
 # Daily limits shared by several profiles (the profiles then name `quota_group` instead of
 # daily_limit/quota_timezone). OpenRouter: all `:free` models together get 50 requests/day,
@@ -37,9 +40,10 @@ reconciler:
   # description_max_chars: 4000 # default: SCRAPPY_LLM_MAX_DESCRIPTION_CHARS
 
 profiles:
-  openrouter:                   # the default: same model and behaviour as before ADR 0010
+  openrouter:                   # PAID, approved for the pool (user, 2026-10-10)
     provider: openrouter
-    # model: openai/gpt-4o-mini # default: SCRAPPY_LLM_MODEL
+    model: inclusionai/ling-3.0-flash-vl
+    paid: true
     api_key_env: OPENROUTER_API_KEY
     mode: sync                  # sync | batch | auto (batch needs the OpenRouter batch adapter)
     structured_output: json_schema   # json_schema | json_object | prompt_only

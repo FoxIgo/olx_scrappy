@@ -22,7 +22,9 @@ class Comparison(StrEnum):
     GT = ">"
     GE = ">="
     CONTAINS = "~"
-    """Case-insensitive substring match, strings only."""
+    """Case-insensitive substring match on text; element membership on ``enum_list``."""
+    NOT_CONTAINS = "!~"
+    """Negation of ``~`` (a present value only: null never matches)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,12 +38,17 @@ class AttributePredicate:
 
         Rules: a missing/null attribute never matches (not even ``!=``); strings compare
         case-insensitively; numbers (int/Decimal) compare numerically; ordering operators on
-        strings or booleans, and mixed types, do not match.
+        strings or booleans, and mixed types, do not match. Lists (``enum_list``) support only
+        ``~`` (has the element) and ``!~`` (lacks it).
         """
         actual = attributes.get(self.attribute)
         if actual is None:
             return False
         expected = self.value
+        if isinstance(actual, tuple):
+            return _matches_list(self.op, actual, expected)
+        if isinstance(expected, tuple):
+            return False
         if isinstance(actual, bool) or isinstance(expected, bool):
             if not (isinstance(actual, bool) and isinstance(expected, bool)):
                 return False
@@ -52,8 +59,17 @@ class AttributePredicate:
             left, right = actual.casefold(), expected.casefold()
             if self.op is Comparison.CONTAINS:
                 return right in left
+            if self.op is Comparison.NOT_CONTAINS:
+                return right not in left
             return _compare_equality(self.op, left == right)
         return _compare_numbers(self.op, Decimal(actual), Decimal(expected))
+
+
+def _matches_list(op: Comparison, actual: tuple[str, ...], expected: AttributeValue) -> bool:
+    if not isinstance(expected, str) or op not in (Comparison.CONTAINS, Comparison.NOT_CONTAINS):
+        return False
+    present = expected.casefold() in {item.casefold() for item in actual}
+    return present if op is Comparison.CONTAINS else not present
 
 
 def _compare_equality(op: Comparison, equal: bool) -> bool:
@@ -78,5 +94,5 @@ def _compare_numbers(op: Comparison, left: Decimal, right: Decimal) -> bool:
             return left > right
         case Comparison.GE:
             return left >= right
-        case Comparison.CONTAINS:
+        case Comparison.CONTAINS | Comparison.NOT_CONTAINS:
             return False

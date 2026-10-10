@@ -114,5 +114,11 @@ def test_facet_counts_values_nulls_and_buckets() -> None:
     assert len(single.numeric.buckets) == 1
 
 
+def test_facet_counts_each_list_element() -> None:
+    facet = count_facet([("screen", "hinge"), ("screen",), None])
+    assert facet.values == (("screen", 2), ("hinge", 1))
+    assert (facet.total, facet.null_count) == (3, 1)
+
+
 def test_facet_booleans_are_not_numeric() -> None:
     assert count_facet([True, False, True]).numeric is None

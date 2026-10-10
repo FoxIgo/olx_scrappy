@@ -48,6 +48,8 @@ def _spec_line(spec: AttributeSpec) -> str:
     kind = spec.type.value
     if spec.type is AttributeType.ENUM:
         kind = "one of " + ", ".join(spec.values)
+    elif spec.type is AttributeType.ENUM_LIST:
+        kind = "JSON array of any of: " + ", ".join(spec.values) + "; [] or null if none"
     text = f"  - {spec.name} ({kind})"
     if spec.description:
         text += f": {spec.description}"

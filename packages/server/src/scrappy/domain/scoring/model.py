@@ -107,6 +107,10 @@ def validate_against_category(strategy: Strategy, category: Category) -> None:
             raise InvalidValueError(f"{where}: 'map' only applies to enum attributes")
         elif spec.type is AttributeType.STRING:
             raise InvalidValueError(f"{where}: {spec.name!r} is text, not a number")
+        elif spec.type is AttributeType.ENUM_LIST:
+            raise InvalidValueError(
+                f"{where}: {spec.name!r} is a list; use it in a filter (!~ / ~), not a term"
+            )
 
 
 def _check_map(where: str, attribute: str, values: tuple[str, ...], term: Term) -> None:

@@ -56,6 +56,31 @@ class TestAttributeSpec:
         with pytest.raises(InvalidValueError):
             AttributeSpec("a", spec_type).coerce(raw)
 
+    def test_enum_list(self) -> None:
+        spec = AttributeSpec("damage", AttributeType.ENUM_LIST, values=("screen", "hinge"))
+        assert spec.coerce(["screen", "hinge", "screen"]) == ("screen", "hinge")  # deduplicated
+        assert spec.coerce([]) == ()
+        for bad in ("screen", ["keyboard"], ["screen", 1], None):
+            with pytest.raises(InvalidValueError):
+                spec.coerce(bad)
+        assert spec.coerce_element("hinge") == "hinge"
+        with pytest.raises(InvalidValueError):
+            spec.coerce_element("keyboard")
+        with pytest.raises(InvalidValueError):
+            AttributeSpec("damage", AttributeType.ENUM_LIST)
+
+    def test_empty_list_is_stored_as_null(self) -> None:
+        category = Category(
+            CategoryName("laptop"),
+            1,
+            (
+                AttributeSpec("ram_gb", AttributeType.INTEGER),
+                AttributeSpec("damage", AttributeType.ENUM_LIST, values=("screen",)),
+            ),
+        )
+        assert category.validate_attributes({"ram_gb": 8, "damage": []})["damage"] is None
+        assert category.validate_attributes({"damage": ["screen"]})["damage"] == ("screen",)
+
     def test_enum(self) -> None:
         spec = AttributeSpec("storage", AttributeType.ENUM, values=("ssd", "hdd"))
         assert spec.coerce("ssd") == "ssd"
@@ -217,6 +242,29 @@ class TestAttributePredicate:
     )
     def test_matches(self, predicate: AttributePredicate, expected: bool) -> None:
         assert predicate.matches(self.attrs) is expected
+
+    @pytest.mark.parametrize(
+        ("predicate", "expected"),
+        [
+            (AttributePredicate("damage", Comparison.CONTAINS, "screen"), True),
+            (AttributePredicate("damage", Comparison.CONTAINS, "SCREEN"), True),
+            (AttributePredicate("damage", Comparison.CONTAINS, "scr"), False),  # an element
+            (AttributePredicate("damage", Comparison.CONTAINS, "motherboard"), False),
+            (AttributePredicate("damage", Comparison.NOT_CONTAINS, "motherboard"), True),
+            (AttributePredicate("damage", Comparison.NOT_CONTAINS, "hinge"), False),
+            (AttributePredicate("damage", Comparison.EQ, "screen"), False),
+            (AttributePredicate("gpu", Comparison.NOT_CONTAINS, "rtx"), True),
+            (AttributePredicate("gpu", Comparison.NOT_CONTAINS, "gtx"), False),
+            (AttributePredicate("ram_gb", Comparison.NOT_CONTAINS, "1"), False),
+        ],
+    )
+    def test_list_and_not_contains(self, predicate: AttributePredicate, expected: bool) -> None:
+        attrs = {**self.attrs, "damage": ("screen", "hinge")}
+        assert predicate.matches(attrs) is expected
+
+    def test_null_list_matches_neither_has_nor_lacks(self) -> None:
+        for op in (Comparison.CONTAINS, Comparison.NOT_CONTAINS):
+            assert not AttributePredicate("damage", op, "screen").matches({"damage": None})
 
     def test_null_never_matches(self) -> None:
         assert not AttributePredicate("gpu", Comparison.NE, "x").matches({"gpu": None})

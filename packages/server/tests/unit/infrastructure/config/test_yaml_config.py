@@ -23,9 +23,14 @@ def test_shipped_categories_load() -> None:
     catalog = load_categories(CONFIG_DIR / "categories.yaml")
     laptop = catalog.get(CategoryName("laptop"))
     assert laptop is not None
-    assert laptop.version == 2
+    assert laptop.version == 3
     for name in ("vram_gb", "refresh_hz", "resolution", "battery_wh", "battery_note", "max_ram_gb"):
         assert laptop.attribute(name) is not None, name
+    damage = laptop.attribute("damage")
+    assert damage is not None
+    assert damage.type is AttributeType.ENUM_LIST
+    assert {"screen", "motherboard", "unknown"} <= set(damage.values)
+    assert laptop.attribute("damage_note") is not None
     upgradeable = laptop.attribute("ram_upgradeable")
     assert upgradeable is not None
     assert upgradeable.type is AttributeType.BOOLEAN
@@ -75,7 +80,7 @@ async def test_provider_reloads_on_change(tmp_path: Path) -> None:
         ),
         (
             "laptop: {version: 1, attributes: {s: {type: enum}}}",
-            "laptop.attributes.s: Value error, enum attributes need",
+            "laptop.attributes.s: Value error, enum and enum_list attributes need",
         ),
         (
             "laptop: {version: 1, attributes: {s: {type: string, values: [a]}}}",

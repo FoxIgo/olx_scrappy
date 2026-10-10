@@ -1,10 +1,10 @@
 # Categories and attribute schemas for LLM extraction (ADR 0007).
 # Unknown values are extracted as null, never guessed.
 # Format: <name>: {version (bump on every schema change), description?, attributes: {...}}
-# Attribute: {type: string|integer|number|boolean|enum, description?, values? (enum only)}
+# Attribute: {type: string|integer|number|boolean|enum|enum_list, description?, values? (enum and enum_list only)}
 # 'other' is reserved (offers that fit no category).
 laptop:
-  version: 2
+  version: 3
   description: "A laptop or notebook computer (not a charger, bag, spare part or desktop PC)"
   attributes:
     gpu:
@@ -30,7 +30,14 @@ laptop:
       description: "Short note on battery health or runtime as stated by the seller, e.g. 'holds 3h', 'needs replacement'. Null if not mentioned."
     ram_upgradeable: {type: boolean, description: "True if the RAM can be upgraded (slot / SO-DIMM), false if soldered. Null if not stated."}
     max_ram_gb:   {type: integer, description: "Maximum supported RAM in GB, only when stated"}
+    damage:
+      type: enum_list
+      values: [screen, keyboard, touchpad, battery, hinge, housing, charging_port, ports, speakers, camera, wifi, storage_missing, ram_missing, charger_missing, os_missing, bios_locked, motherboard, gpu, no_power, liquid_damage, unknown]
+      description: "Damaged or missing parts the offer states, as a JSON array; [] or null when nothing is damaged. screen = 'pęknięta / zbita / uszkodzona matryca'. keyboard, touchpad, battery ('bateria do wymiany'), hinge = 'zawiasy', housing = 'obudowa'. charging_port = 'gniazdo zasilania'. storage_missing = 'brak dysku', ram_missing = 'brak RAM', charger_missing = 'brak zasilacza', os_missing = 'brak systemu'. bios_locked = 'blokada BIOS' / 'hasło BIOS'. motherboard = 'uszkodzona płyta główna'. gpu = 'artefakty' / 'grafika do reballingu'. no_power = 'nie włącza się' / 'brak reakcji'. liquid_damage = 'zalany'. Use unknown when the offer says it is damaged but not what. Only what the offer states, never guess."
+    damage_note:
+      type: string
+      description: "Short note on what the seller says is wrong or missing (Polish is fine). Null if nothing is damaged."
     condition:
       type: enum
       values: [new, used, damaged, for_parts]
-      description: "new = unused / sealed. used = working used item. damaged = works but has defects (cracked screen 'pęknięta matryca', broken keys, dead battery, 'uszkodzony'). for_parts = not working / sold for parts ('na części', 'nie działa', 'nie włącza się'). The offers are in Polish."
+      description: "new = unused / sealed. used = working used item. damaged = has defects: 'do naprawy' with a stated fixable fault (cracked screen 'pęknięta matryca', broken keys, dead battery, hinge, 'uszkodzony'); name them in damage. for_parts = not working / sold for parts ('na części', 'nie działa', 'nie włącza się'). The offers are in Polish."

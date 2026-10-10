@@ -45,6 +45,7 @@ text into structured fields. That makes it cheap, testable, replaceable, and saf
       storage_type: {type: enum, values: [ssd, hdd, emmc]}
       screen_in:  {type: number}
       condition:  {type: enum, values: [new, used, damaged, for_parts]}
+      damage:     {type: enum_list, values: [screen, keyboard, ...]}   # JSON array, [] = none
   ```
 - `SavedSearch.category` says what the search is looking for (`gtx-laptops → laptop`).
 - **Classification is per offer, relevance is per search.** An offer is classified

@@ -38,6 +38,7 @@ _JSON_TYPES: Mapping[AttributeType, str] = {
     AttributeType.NUMBER: "number",
     AttributeType.BOOLEAN: "boolean",
     AttributeType.ENUM: "string",
+    AttributeType.ENUM_LIST: "array",
 }
 
 
@@ -56,6 +57,8 @@ def attribute_schema(spec: AttributeSpec) -> dict[str, Any]:
     schema: dict[str, Any] = {"type": [_JSON_TYPES[spec.type], "null"]}
     if spec.type is AttributeType.ENUM:
         schema["enum"] = [*spec.values, None]
+    elif spec.type is AttributeType.ENUM_LIST:
+        schema["items"] = {"type": "string", "enum": list(spec.values)}
     if spec.description:
         schema["description"] = spec.description
     return schema
@@ -81,6 +84,11 @@ _OTHER_ATTRIBUTES: dict[str, Any] = {
     "required": [],
     "additionalProperties": False,
 }
+
+
+def _is_blank(value: object) -> bool:
+    """Nothing stated: null, or an empty list (``enum_list`` with nothing to record)."""
+    return value is None or value == []
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,7 +180,7 @@ class ExtractionSchema:
                 problems.append(f"attributes.{spec.name}: {error}")
         if problems:
             raise InvalidAnswerError("; ".join(problems))
-        if category.attributes and all(value is None for value in kept.values()):
+        if category.attributes and all(_is_blank(value) for value in kept.values()):
             raise InvalidAnswerError(EMPTY_ATTRIBUTES_MESSAGE.format(category=category.name))
         return ValidAnswer(category.name, kept, notes)
 
