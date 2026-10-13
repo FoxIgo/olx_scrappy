@@ -257,6 +257,7 @@ def offers_table(items: Sequence[OfferListItem], *, with_relevance: bool, title:
     table.add_column("Location", overflow="fold", ratio=2)
     if with_relevance:
         table.add_column("Rel", no_wrap=True)
+    table.add_column("Delivery", no_wrap=True)
     table.add_column("Attributes", overflow="fold", ratio=2)
     with_url = stdout().width >= WIDE_TABLE  # seven columns do not fit a narrow terminal
     if with_url:
@@ -271,6 +272,7 @@ def offers_table(items: Sequence[OfferListItem], *, with_relevance: bool, title:
         ]
         if with_relevance:
             row.append(Text(relevance_text(item.link.is_relevant if item.link else None)))
+        row.append(Text("yes", style="green") if offer.has_delivery else Text("-", style="dim"))
         row.append(Text(attribute_text(item.extraction)))
         if with_url:
             row.append(Text(offer.url))
@@ -294,6 +296,12 @@ def offer_detail(
     info.add_row("Price", str(offer.price) if offer.price else "-")
     info.add_row("Location", Text(offer.location or "-"))
     info.add_row("Status", offer.status.value)
+    info.add_row(
+        "Delivery",
+        Text("available (Przesyłka OLX)", style="green")
+        if offer.has_delivery
+        else Text("no (pickup only)", style="dim"),
+    )
     info.add_row("URL", Text(offer.url, overflow="fold"))
     info.add_row("First seen", fmt_time(offer.first_seen_at))
     info.add_row("Last seen", fmt_time(offer.last_seen_at))

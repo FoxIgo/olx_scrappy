@@ -65,6 +65,13 @@ def list_cmd(
         list[str] | None,
         typer.Option("--where", "-w", help='Attribute filter, e.g. "ram_gb>=16" (repeatable).'),
     ] = None,
+    delivery: Annotated[
+        bool | None,
+        typer.Option(
+            "--delivery/--no-delivery",
+            help="Filter by OLX delivery (safe buy) availability.",
+        ),
+    ] = None,
     category: Annotated[
         str | None, typer.Option("--category", help="Category of the latest extraction.")
     ] = None,
@@ -84,6 +91,7 @@ def list_cmd(
             statuses=_statuses(status),
             category=CategoryName(category) if category else None,
             attributes=parse_wheres(where or ()),
+            has_delivery=delivery,
             limit=limit if sort == "seen" else SORT_FETCH_LIMIT,
         )
         items = sort_items(await app.list_offers(query), sort)[:limit]

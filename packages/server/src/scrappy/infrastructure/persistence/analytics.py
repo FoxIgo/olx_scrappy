@@ -110,6 +110,7 @@ class SqlAnalyticsQueries:
                     price_amount=None if amount is None else Decimal(amount),
                     price_currency=row[offers.c.price_currency],
                     price_negotiable=row[offers.c.price_negotiable],
+                    has_delivery=bool(row[offers.c.has_delivery]),
                     first_seen_at=row[offers.c.first_seen_at],
                     last_seen_at=row[offers.c.last_seen_at],
                     category=None if category is None else CategoryName(category),

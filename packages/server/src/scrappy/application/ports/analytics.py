@@ -54,6 +54,7 @@ class OfferRow:
     price_negotiable: bool | None
     first_seen_at: datetime
     last_seen_at: datetime
+    has_delivery: bool = False
     category: CategoryName | None = None
     attributes: Mapping[str, AttributeValue | None] = field(
         default_factory=dict[str, AttributeValue | None]

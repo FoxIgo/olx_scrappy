@@ -43,6 +43,8 @@ class OfferFilter:
     """Restrict to offers whose latest extraction has this category."""
     attributes: tuple[AttributePredicate, ...] = ()
     """All must match the latest extraction's attributes (AND)."""
+    has_delivery: bool | None = None
+    """Restrict to offers with or without delivery (None = any)."""
     limit: int = 100
     offset: int = 0
 
@@ -67,6 +69,8 @@ def matches_filter(item: OfferListItem, query: OfferFilter) -> bool:
     if query.search is not None and (item.link is None or item.link.search != query.search):
         return False
     if query.statuses and item.offer.status not in query.statuses:
+        return False
+    if query.has_delivery is not None and item.offer.has_delivery != query.has_delivery:
         return False
     relevant = item.link.is_relevant if item.link is not None else None
     match query.relevance:

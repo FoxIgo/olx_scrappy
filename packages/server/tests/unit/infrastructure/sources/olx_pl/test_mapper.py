@@ -46,10 +46,16 @@ def test_golden_mapping_of_first_search_item(first_item: dict[str, Any]) -> None
     assert obs.posted_at is not None
     assert obs.posted_at.utcoffset() == timedelta(hours=2)
     assert obs.promoted is True  # promotion.top_ad
+    assert obs.has_delivery is False
     assert obs.status is OfferStatus.ACTIVE
     assert obs.seller == SellerRef(external_id="24901353", name="Adam", is_business=False)
     assert obs.description == first_item["description"]
     assert obs.is_detail_complete
+
+
+def test_delivery_active_mapped_from_second_search_item(search_page1: dict[str, Any]) -> None:
+    obs = map_api_offer(search_page1["data"][1])
+    assert obs.has_delivery is True
 
 
 def test_params_exclude_price_and_use_labels(first_item: dict[str, Any]) -> None:

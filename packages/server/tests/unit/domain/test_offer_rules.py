@@ -92,10 +92,14 @@ class TestApplyObservation:
 
     def test_untracked_fields_update_silently(self) -> None:
         offer = enriched_offer()
-        changes = offer.apply(listing("1", refreshed_at=at(5), url="https://new.test/1"), at(6))
+        assert offer.has_delivery is False
+        changes = offer.apply(
+            listing("1", refreshed_at=at(5), url="https://new.test/1", has_delivery=True), at(6)
+        )
         assert changes == []
         assert offer.refreshed_at == at(5)
         assert offer.url == "https://new.test/1"
+        assert offer.has_delivery is True
 
     def test_idempotent(self) -> None:
         offer = enriched_offer()

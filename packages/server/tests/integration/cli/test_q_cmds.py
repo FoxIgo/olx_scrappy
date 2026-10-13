@@ -101,12 +101,17 @@ def test_offers_filters_fields_and_decimal_strings(ran: CliEnv) -> None:
     assert [r["id"] for r in title["data"]] == ["olx_pl:a1"]
     assert q(ran, "offers", "--status", "sold")["count"] == 0
     assert q(ran, "offers", "--status", "any", "--all")["count"] == 4
+    deliv = q(ran, "offers", "--search", "gtx-laptops", "-w", "has_delivery=true")
+    assert {r["id"] for r in deliv["data"]} == {"olx_pl:a1", "olx_pl:a3"}
+    nodeliv = q(ran, "offers", "--search", "gtx-laptops", "-w", "has_delivery=false")
+    assert {r["id"] for r in nodeliv["data"]} == {"olx_pl:a2"}
 
 
 def test_offer_detail(ran: CliEnv) -> None:
     document = q(ran, "offer", "olx_pl:a1", "olx_pl:zzz")
     (detail,) = document["data"]
     assert detail["id"] == "olx_pl:a1" and detail["price"]["amount"] == "2000"
+    assert detail["has_delivery"] is True
     assert detail["extraction"]["category"] == "laptop"
     assert detail["extraction"]["provenance"]["model"] == "fake-model"
     assert detail["searches"][0]["search"] == "gtx-laptops"
@@ -233,7 +238,7 @@ def test_export_to_file_writes_csv_and_prints_envelope(ran: CliEnv, tmp_path: Pa
 
     columns, rows = read_csv(target.read_text(encoding="utf-8"))
     assert columns == data["columns"]
-    assert columns[:15] == [
+    assert columns[:16] == [
         "offer_id",
         "source",
         "title",
@@ -244,13 +249,14 @@ def test_export_to_file_writes_csv_and_prints_envelope(ran: CliEnv, tmp_path: Pa
         "price_amount",
         "currency",
         "negotiable",
+        "has_delivery",
         "first_seen_at",
         "last_seen_at",
         "search",
         "relevant",
         "category",
     ]
-    assert columns[15:] == [
+    assert columns[16:] == [
         "attr_gpu",
         "attr_cpu",
         "attr_ram_gb",

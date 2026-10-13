@@ -49,6 +49,7 @@ class OfferObservation:
     posted_at: datetime | None = None
     refreshed_at: datetime | None = None
     promoted: bool = False
+    has_delivery: bool = False
     description: str | None = None
     params: Params | None = None
     status: OfferStatus | None = None

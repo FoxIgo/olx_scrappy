@@ -104,6 +104,8 @@ class SqlOfferQueries:
             seen = offers.c.last_seen_at
         if query.statuses:
             conditions.append(offers.c.status.in_(sorted(s.value for s in query.statuses)))
+        if query.has_delivery is not None:
+            conditions.append(offers.c.has_delivery.is_(query.has_delivery))
         if query.category is not None:
             conditions.append(latest.c.category == query.category.value)
         stmt = select(*columns).select_from(source).where(*conditions)

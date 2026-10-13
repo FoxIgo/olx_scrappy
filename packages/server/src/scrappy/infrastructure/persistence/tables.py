@@ -115,6 +115,7 @@ offers = Table(
     Column("price_amount", String(64)),
     Column("price_currency", String(3)),
     Column("price_negotiable", Boolean),
+    Column("has_delivery", Boolean, nullable=False, server_default=false()),
     Column("location", Text),
     Column("thumbnail_url", Text),
     Column("posted_at", UtcDateTime),

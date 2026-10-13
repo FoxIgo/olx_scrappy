@@ -32,7 +32,7 @@ from scrappy.domain.search import SearchName
 
 type Json = dict[str, object]
 
-PSEUDO_FIELDS = ("price", "title", "location")
+PSEUDO_FIELDS = ("price", "title", "location", "has_delivery")
 DEFAULT_STATUSES = frozenset({OfferStatus.ACTIVE})
 
 
@@ -192,11 +192,20 @@ def _pseudo_values(row: OfferRow) -> dict[str, AttributeValue | None]:
         "price": None if fixed is None else fixed[0],
         "title": row.title,
         "location": row.location,
+        "has_delivery": row.has_delivery,
     }
 
 
 def _typed_pseudo(predicate: AttributePredicate) -> AttributePredicate:
     raw = str(predicate.value)
+    if predicate.attribute == "has_delivery":
+        if predicate.op not in (Comparison.EQ, Comparison.NE):
+            raise InvalidRequestError("has_delivery filter only supports = and !=")
+        val_str = raw.strip().lower()
+        if val_str not in ("true", "false", "1", "0", "yes", "no"):
+            raise InvalidRequestError("has_delivery filter must be true/false or yes/no")
+        bval = val_str in ("true", "1", "yes")
+        return AttributePredicate("has_delivery", predicate.op, bval)
     if predicate.attribute == "price":
         if predicate.op in (Comparison.CONTAINS, Comparison.NOT_CONTAINS):
             raise InvalidRequestError("~ needs a text field (price is numeric)")

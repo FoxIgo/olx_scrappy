@@ -32,18 +32,25 @@ async def populate(factory: Factory) -> None:
         for name, category in ((S1, LAPTOP), (S2, PHONE)):
             await uow.searches.save(SavedSearch(name, OLX, f"https://x.test/{name}", category, T0))
 
-        def offer(key: str, seen: int, status: OfferStatus = OfferStatus.ACTIVE) -> Offer:
+        def offer(
+            key: str,
+            seen: int,
+            status: OfferStatus = OfferStatus.ACTIVE,
+            *,
+            has_delivery: bool = False,
+        ) -> Offer:
             o = full_offer(key)
             o.last_seen_at = at(seen)
             o.status = status
+            o.has_delivery = has_delivery
             return o
 
         offers = [
-            offer("1", 10),
-            offer("2", 30),
+            offer("1", 10, has_delivery=True),
+            offer("2", 30, has_delivery=True),
             offer("3", 30),  # ties with 2: ordered by id
-            offer("4", 20, OfferStatus.SOLD),
-            offer("5", 5, OfferStatus.REMOVED),
+            offer("4", 20, status=OfferStatus.SOLD),
+            offer("5", 5, status=OfferStatus.REMOVED),
             offer("6", 40),
             offer("7", 1),  # no extraction at all
             offer("10", 30),  # sorts before "2" as a string
@@ -232,3 +239,19 @@ async def test_list_attributes_round_trip_and_filter_in_sql(
         OfferFilter(attributes=(pred("damage", Comparison.NOT_CONTAINS, "motherboard"),))
     )
     assert ids(lacks) == {"olx_pl:3"}  # null damage never matches, 4 has motherboard
+
+
+async def test_filter_by_delivery(
+    both: tuple[InMemoryOfferQueries, SqlOfferQueries],
+) -> None:
+    mem, sql = both
+    query = OfferFilter(has_delivery=True)
+    expected = await mem.list_offers(query)
+    actual = await sql.list_offers(query)
+    assert [str(i.offer.id) for i in actual] == [str(i.offer.id) for i in expected]
+    assert {str(i.offer.id) for i in actual} == {"olx_pl:2", "olx_pl:1"}
+
+    no_delivery = await sql.list_offers(OfferFilter(has_delivery=False))
+    assert "olx_pl:1" not in {str(i.offer.id) for i in no_delivery}
+    assert "olx_pl:2" not in {str(i.offer.id) for i in no_delivery}
+    assert "olx_pl:3" in {str(i.offer.id) for i in no_delivery}

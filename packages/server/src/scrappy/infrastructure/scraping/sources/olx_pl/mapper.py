@@ -29,6 +29,8 @@ Mapping decisions
   (``removed_by_user``, ``moderated``, ``unpaid``, ``limited``... the offer is not publicly
   available; the exact set is unverified, see spike section 5).
 * **Promoted**: ``promotion.top_ad`` (API) / ``isPromoted`` (state).
+* **Delivery / safe buy**: ``delivery.rock.active`` (API / state) ->
+  ``has_delivery`` (True if active).
 """
 
 from __future__ import annotations
@@ -50,7 +52,7 @@ from scrappy.domain.offer import (
 )
 from scrappy.domain.shared import InvalidValueError, Money, SourceId
 
-from .schemas import ApiOffer, ApiPriceValue, StateAd
+from .schemas import ApiDelivery, ApiOffer, ApiPriceValue, StateAd
 
 SOURCE_ID = SourceId("olx_pl")
 IMAGE_SIZE = "1000x700"
@@ -73,6 +75,12 @@ def describe_validation_error(exc: ValidationError) -> str:
 
 
 # ----------------------------------------------------------------------------- shared helpers
+
+
+def is_delivery_active(delivery: ApiDelivery | None) -> bool:
+    if delivery is None or delivery.rock is None:
+        return False
+    return bool(delivery.rock.active)
 
 
 def status_from_text(raw: str) -> OfferStatus:
@@ -193,6 +201,7 @@ def map_api_offer(raw: object, *, require_price: bool = True) -> OfferObservatio
             posted_at=offer.created_time,
             refreshed_at=offer.last_refresh_time,
             promoted=bool(offer.promotion and offer.promotion.top_ad),
+            has_delivery=is_delivery_active(offer.delivery),
             description=offer.description,
             params=build_params(
                 (p.key, _label_of(p.value)) for p in offer.params if p.key != "price"
@@ -249,6 +258,7 @@ def map_state_ad(raw: object, *, require_price: bool = True) -> OfferObservation
             posted_at=ad.createdTime,
             refreshed_at=ad.lastRefreshTime,
             promoted=ad.isPromoted,
+            has_delivery=is_delivery_active(ad.delivery),
             description=ad.description,
             params=build_params((p.key, _label_of(p.value)) for p in ad.params if p.key != "price"),
             status=status_from_text(ad.status),

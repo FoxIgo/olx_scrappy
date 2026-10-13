@@ -186,9 +186,20 @@ def test_offers_list_status_limit_and_sort(ran: CliEnv) -> None:
     assert "olx_pl:a2" not in desc and "2 offer(s)" in desc
 
 
+def test_offers_list_delivery_filter(ran: CliEnv) -> None:
+    delivery_only = ran.ok("offers", "list", "gtx-laptops", "--delivery")
+    assert "olx_pl:a1" in delivery_only and "olx_pl:a3" in delivery_only
+    assert "olx_pl:a2" not in delivery_only and "olx_pl:a4" not in delivery_only
+
+    no_delivery = ran.ok("offers", "list", "gtx-laptops", "--no-delivery")
+    assert "olx_pl:a2" in no_delivery and "olx_pl:a4" in no_delivery
+    assert "olx_pl:a1" not in no_delivery and "olx_pl:a3" not in no_delivery
+
+
 def test_offers_show(ran: CliEnv) -> None:
     out = ran.ok("offers", "show", "olx_pl:a1")
     assert "Laptop 16GB GTX" in out
+    assert "available (Przesyłka OLX)" in out
     assert "Latest extraction: laptop" in out
     assert "gpu" in out and "GTX 1650" in out
     assert "gtx-laptops" in out

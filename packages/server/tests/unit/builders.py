@@ -61,6 +61,7 @@ def listing(
     price: Price | None = DEFAULT_PRICE,
     refreshed_at: datetime | None = None,
     promoted: bool = False,
+    has_delivery: bool = False,
     url: str | None = "default",
 ) -> OfferObservation:
     return OfferObservation(
@@ -71,6 +72,7 @@ def listing(
         price=price,
         refreshed_at=refreshed_at,
         promoted=promoted,
+        has_delivery=has_delivery,
     )
 
 
@@ -84,6 +86,7 @@ def details(
     params: dict[str, str] | None = None,
     status: OfferStatus | None = OfferStatus.ACTIVE,
     refreshed_at: datetime | None = None,
+    has_delivery: bool = False,
 ) -> OfferObservation:
     return OfferObservation(
         offer_id=oid(external_id, source),
@@ -91,6 +94,7 @@ def details(
         url=f"https://example.test/{source}/{external_id}",
         title=title,
         price=price,
+        has_delivery=has_delivery,
         description=description,
         params=Params.of(params if params is not None else {"state": "used"}),
         status=status,

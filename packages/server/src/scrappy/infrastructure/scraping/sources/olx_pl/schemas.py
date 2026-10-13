@@ -87,6 +87,16 @@ class ApiPromotion(_Lenient):
     urgent: bool = False
 
 
+class ApiDeliveryRock(_Lenient):
+    active: bool = False
+    mode: str | None = None
+    offer_id: str | None = None
+
+
+class ApiDelivery(_Lenient):
+    rock: ApiDeliveryRock | None = None
+
+
 class ApiOffer(_Lenient):
     """One ``data[]`` item of the search API, or ``data`` of the detail API (same shape)."""
 
@@ -104,6 +114,7 @@ class ApiOffer(_Lenient):
     business: bool | None = None
     location: ApiLocation | None = None
     promotion: ApiPromotion | None = None
+    delivery: ApiDelivery | None = None
 
     @field_validator("id")
     @classmethod
@@ -191,6 +202,7 @@ class StateAd(_Lenient):
     user: StateUser | None = None
     isBusiness: bool | None = None
     isPromoted: bool = False
+    delivery: ApiDelivery | None = None
 
     @field_validator("id")
     @classmethod

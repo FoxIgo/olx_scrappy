@@ -86,6 +86,7 @@ class InMemoryAnalyticsQueries:
                     price_negotiable=None if price is None else price.negotiable,
                     first_seen_at=offer.first_seen_at,
                     last_seen_at=offer.last_seen_at,
+                    has_delivery=offer.has_delivery,
                     category=None if extraction is None else extraction.category,
                     attributes={} if extraction is None else dict(extraction.attributes),
                     extracted_at=None if extraction is None else extraction.provenance.extracted_at,

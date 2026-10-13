@@ -47,9 +47,9 @@ def classify(request: ExtractionInput) -> ExtractionResult | ExtractionRejection
 def scripted_source(source: ScriptedListingSource | None = None) -> ScriptedListingSource:
     source = source or ScriptedListingSource("olx_pl")
     offers = (
-        details("a1", title="Laptop 16GB GTX", description="fast one"),
+        details("a1", title="Laptop 16GB GTX", description="fast one", has_delivery=True),
         details("a2", title="Laptop 8GB", description="slow one"),
-        details("a3", title="Laptop 32GB", description="huge one"),
+        details("a3", title="Laptop 32GB", description="huge one", has_delivery=True),
         details("a4", title="Charger 65W", description="a charger"),
     )
     # different prices so --sort price is observable

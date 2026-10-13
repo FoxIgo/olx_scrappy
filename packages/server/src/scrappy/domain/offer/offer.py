@@ -91,6 +91,7 @@ class Offer:
     thumbnail_url: str | None = None
     posted_at: datetime | None = None
     refreshed_at: datetime | None = None
+    has_delivery: bool = False
     description: str | None = None
     params: Params | None = None
     status: OfferStatus = OfferStatus.UNKNOWN
@@ -151,6 +152,7 @@ class Offer:
             self.seller = observation.seller
         if observation.image_urls is not None:
             self.image_urls = observation.image_urls
+        self.has_delivery = observation.has_delivery
 
         if observation.is_detail_complete:
             self.details_fetched_at = at

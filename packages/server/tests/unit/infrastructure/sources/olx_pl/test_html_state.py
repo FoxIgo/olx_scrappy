@@ -67,6 +67,7 @@ def test_state_and_api_mapping_agree_on_shared_fields() -> None:
         assert from_state.params == from_api.params
         assert from_state.seller == from_api.seller
         assert from_state.status == from_api.status
+        assert from_state.has_delivery == from_api.has_delivery
         assert from_state.image_urls == from_api.image_urls
         assert from_state.thumbnail_url == from_api.thumbnail_url
 
