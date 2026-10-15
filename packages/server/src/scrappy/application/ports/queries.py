@@ -32,11 +32,22 @@ class RelevanceFilter(StrEnum):
     IRRELEVANT = "irrelevant"
 
 
+class LivenessFilter(StrEnum):
+    ALL = "all"
+    ALIVE = "alive"
+    """Score >= 65, active seller, fresh listing."""
+    STALE = "stale"
+    """Score 35..64, borderline activity."""
+    ZOMBIE = "zombie"
+    """Score < 35, dead/abandoned listing or ghost auto-renew."""
+
+
 @dataclass(frozen=True, slots=True)
 class OfferFilter:
     search: SearchName | None = None
     """Restrict to offers found by this search (required for relevance filtering)."""
     relevance: RelevanceFilter = RelevanceFilter.ALL
+    liveness: LivenessFilter = LivenessFilter.ALL
     statuses: frozenset[OfferStatus] = frozenset()
     """Empty = any status."""
     category: CategoryName | None = None
@@ -71,6 +82,11 @@ def matches_filter(item: OfferListItem, query: OfferFilter) -> bool:
     if query.statuses and item.offer.status not in query.statuses:
         return False
     if query.has_delivery is not None and item.offer.has_delivery != query.has_delivery:
+        return False
+    if (
+        query.liveness is not LivenessFilter.ALL
+        and item.offer.liveness.status.value != query.liveness.value
+    ):
         return False
     relevant = item.link.is_relevant if item.link is not None else None
     match query.relevance:

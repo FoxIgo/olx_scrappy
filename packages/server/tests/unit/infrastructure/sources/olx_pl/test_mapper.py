@@ -48,7 +48,14 @@ def test_golden_mapping_of_first_search_item(first_item: dict[str, Any]) -> None
     assert obs.promoted is True  # promotion.top_ad
     assert obs.has_delivery is False
     assert obs.status is OfferStatus.ACTIVE
-    assert obs.seller == SellerRef(external_id="24901353", name="Adam", is_business=False)
+    assert obs.seller == SellerRef(
+        external_id="24901353",
+        name="Adam",
+        is_business=False,
+        created_at=datetime(2014, 8, 31, 16, 43, 29, tzinfo=PLUS2),
+        last_seen_at=datetime(2026, 9, 24, 15, 17, 28, tzinfo=PLUS2),
+        is_online=False,
+    )
     assert obs.description == first_item["description"]
     assert obs.is_detail_complete
 

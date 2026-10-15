@@ -15,6 +15,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scrappy.domain.offer.liveness import LivenessEvaluation
 
 from scrappy.domain.offer.observation import OfferObservation
 from scrappy.domain.offer.values import (
@@ -115,10 +119,18 @@ class Offer:
         offer.apply(observation, at)
         return offer
 
-    # ------------------------------------------------------------------ behaviour
     @property
     def has_details(self) -> bool:
         return self.details_fetched_at is not None
+
+    def evaluate_liveness(self, at: datetime | None = None) -> LivenessEvaluation:
+        from scrappy.domain.offer.liveness import evaluate_liveness
+
+        return evaluate_liveness(self, at=at)
+
+    @property
+    def liveness(self) -> LivenessEvaluation:
+        return self.evaluate_liveness()
 
     def apply(self, observation: OfferObservation, at: datetime) -> list[FieldChange]:
         """Merge an observation into the current state; return tracked-field changes.

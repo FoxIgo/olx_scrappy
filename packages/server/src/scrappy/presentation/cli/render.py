@@ -17,7 +17,12 @@ from scrappy.application.extraction.prepare import prepare_description
 from scrappy.application.jobs.model import Job, JobStatus
 from scrappy.application.ports.queries import OfferListItem
 from scrappy.domain.extraction import OfferExtraction
-from scrappy.domain.offer import Offer, OfferSnapshot
+from scrappy.domain.offer import (
+    LivenessEvaluation,
+    LivenessStatus,
+    Offer,
+    OfferSnapshot,
+)
 from scrappy.domain.offer.offer import FieldChange
 from scrappy.domain.run import Phase, PhaseMetrics, RunStatus, ScrapeRun
 from scrappy.domain.search import SavedSearch, SearchOffer
@@ -249,6 +254,26 @@ WIDE_TABLE = 130
 """Terminal width from which the offers table also shows the URL column."""
 
 
+def liveness_text(eval: LivenessEvaluation) -> Text:
+    match eval.status:
+        case LivenessStatus.ALIVE:
+            return Text(f"alive ({eval.score})", style="green")
+        case LivenessStatus.STALE:
+            return Text(f"stale ({eval.score})", style="yellow")
+        case LivenessStatus.ZOMBIE:
+            return Text(f"zombie ({eval.score})", style="red")
+
+
+def liveness_style(status: LivenessStatus) -> str:
+    match status:
+        case LivenessStatus.ALIVE:
+            return "green"
+        case LivenessStatus.STALE:
+            return "yellow"
+        case LivenessStatus.ZOMBIE:
+            return "red"
+
+
 def offers_table(items: Sequence[OfferListItem], *, with_relevance: bool, title: str) -> Table:
     table = Table(title=title)
     table.add_column("Offer", no_wrap=True)
@@ -257,6 +282,7 @@ def offers_table(items: Sequence[OfferListItem], *, with_relevance: bool, title:
     table.add_column("Location", overflow="fold", ratio=2)
     if with_relevance:
         table.add_column("Rel", no_wrap=True)
+    table.add_column("Live", no_wrap=True)
     table.add_column("Delivery", no_wrap=True)
     table.add_column("Attributes", overflow="fold", ratio=2)
     with_url = stdout().width >= WIDE_TABLE  # seven columns do not fit a narrow terminal
@@ -272,6 +298,7 @@ def offers_table(items: Sequence[OfferListItem], *, with_relevance: bool, title:
         ]
         if with_relevance:
             row.append(Text(relevance_text(item.link.is_relevant if item.link else None)))
+        row.append(liveness_text(offer.liveness))
         row.append(Text("yes", style="green") if offer.has_delivery else Text("-", style="dim"))
         row.append(Text(attribute_text(item.extraction)))
         if with_url:
@@ -296,6 +323,28 @@ def offer_detail(
     info.add_row("Price", str(offer.price) if offer.price else "-")
     info.add_row("Location", Text(offer.location or "-"))
     info.add_row("Status", offer.status.value)
+    live = offer.liveness
+    reasons_str = f" ({'; '.join(live.reasons)})" if live.reasons else ""
+    info.add_row(
+        "Liveness",
+        Text(
+            f"{live.status.value.upper()} [{live.score}/100]{reasons_str}",
+            style=liveness_style(live.status),
+        ),
+    )
+    if offer.seller:
+        seller_parts = [offer.seller.name or "anonymous"]
+        if offer.seller.last_seen_at:
+            seller_parts.append(f"last seen: {fmt_time(offer.seller.last_seen_at)}")
+        if offer.seller.created_at:
+            seller_parts.append(f"joined: {fmt_time(offer.seller.created_at)}")
+        if offer.seller.is_online:
+            seller_parts.append("(online now)")
+        info.add_row("Seller", Text(", ".join(seller_parts)))
+    if offer.posted_at:
+        info.add_row("Posted at", fmt_time(offer.posted_at))
+    if offer.refreshed_at:
+        info.add_row("Refreshed at", fmt_time(offer.refreshed_at))
     info.add_row(
         "Delivery",
         Text("available (Przesyłka OLX)", style="green")

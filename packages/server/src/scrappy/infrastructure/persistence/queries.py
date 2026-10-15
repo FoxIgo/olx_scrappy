@@ -27,6 +27,7 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from scrappy.application.ports.queries import (
+    LivenessFilter,
     OfferFilter,
     OfferListItem,
     RelevanceFilter,
@@ -45,8 +46,8 @@ class SqlOfferQueries:
     async def list_offers(self, query: OfferFilter) -> list[OfferListItem]:
         latest = latest_extraction_cte()
         stmt = self._statement(query, latest)
-        python_attributes = bool(query.attributes)
-        if not python_attributes:
+        python_filtering = bool(query.attributes) or query.liveness is not LivenessFilter.ALL
+        if not python_filtering:
             stmt = stmt.limit(query.limit).offset(query.offset)
 
         items: list[OfferListItem] = []
@@ -57,7 +58,7 @@ class SqlOfferQueries:
             try:
                 async for row in result.mappings():
                     item = self._item(row, latest, query)
-                    if python_attributes:
+                    if python_filtering:
                         if not matches_filter(item, query):
                             continue
                         if skipped < query.offset:

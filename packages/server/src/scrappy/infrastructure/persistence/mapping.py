@@ -154,6 +154,9 @@ def offer_values(offer: Offer) -> dict[str, Any]:
         "seller_external_id": None if seller is None else seller.external_id,
         "seller_name": None if seller is None else seller.name,
         "seller_is_business": None if seller is None else seller.is_business,
+        "seller_created_at": None if seller is None else seller.created_at,
+        "seller_last_seen_at": None if seller is None else seller.last_seen_at,
+        "seller_is_online": None if seller is None else seller.is_online,
         "image_urls": list(offer.image_urls),
         "content_hash": None if offer.content_hash is None else offer.content_hash.value,
         "details_fetched_at": offer.details_fetched_at,
@@ -172,8 +175,18 @@ def offer_from(row: Row, c: Cols) -> Offer:
         row[c.seller_external_id] is not None
         or row[c.seller_name] is not None
         or row[c.seller_is_business] is not None
+        or row[c.seller_created_at] is not None
+        or row[c.seller_last_seen_at] is not None
+        or row[c.seller_is_online] is not None
     ):
-        seller = SellerRef(row[c.seller_external_id], row[c.seller_name], row[c.seller_is_business])
+        seller = SellerRef(
+            row[c.seller_external_id],
+            row[c.seller_name],
+            row[c.seller_is_business],
+            created_at=row[c.seller_created_at],
+            last_seen_at=row[c.seller_last_seen_at],
+            is_online=row[c.seller_is_online],
+        )
     content_hash = row[c.content_hash]
     return Offer(
         id=offer_id_of(row, c),

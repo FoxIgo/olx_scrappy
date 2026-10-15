@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import ValidationError
@@ -154,11 +155,32 @@ def _label_of(value: object) -> str | None:
     return str(raw) if raw not in (None, "") else None
 
 
-def _seller(user_id: object, name: str | None, is_business: bool | None) -> SellerRef | None:
+def _seller(
+    user_id: object,
+    name: str | None,
+    is_business: bool | None,
+    created_at: datetime | None = None,
+    last_seen_at: datetime | None = None,
+    is_online: bool | None = None,
+) -> SellerRef | None:
     external = str(user_id).strip() if user_id not in (None, "") else None
-    if external is None and name is None and is_business is None:
+    if (
+        external is None
+        and name is None
+        and is_business is None
+        and created_at is None
+        and last_seen_at is None
+        and is_online is None
+    ):
         return None
-    return SellerRef(external_id=external, name=name or None, is_business=is_business)
+    return SellerRef(
+        external_id=external,
+        name=name or None,
+        is_business=is_business,
+        created_at=created_at,
+        last_seen_at=last_seen_at,
+        is_online=is_online,
+    )
 
 
 # ----------------------------------------------------------------------------- API mapping
@@ -211,6 +233,9 @@ def map_api_offer(raw: object, *, require_price: bool = True) -> OfferObservatio
                 offer.user.id if offer.user else None,
                 offer.user.name if offer.user else None,
                 offer.business,
+                created_at=offer.user.created if offer.user else None,
+                last_seen_at=offer.user.last_seen if offer.user else None,
+                is_online=offer.user.is_online if offer.user else None,
             ),
             image_urls=images,
         )
@@ -263,7 +288,12 @@ def map_state_ad(raw: object, *, require_price: bool = True) -> OfferObservation
             params=build_params((p.key, _label_of(p.value)) for p in ad.params if p.key != "price"),
             status=status_from_text(ad.status),
             seller=_seller(
-                ad.user.id if ad.user else None, ad.user.name if ad.user else None, ad.isBusiness
+                ad.user.id if ad.user else None,
+                ad.user.name if ad.user else None,
+                ad.isBusiness,
+                created_at=ad.user.created if ad.user else None,
+                last_seen_at=ad.user.lastSeen if ad.user else None,
+                is_online=ad.user.isOnline if ad.user else None,
             ),
             image_urls=images,
         )

@@ -70,6 +70,9 @@ class ApiUser(_Lenient):
     name: str | None = None
     seller_type: str | None = None
     company_name: str | None = None
+    created: AwareDatetime | None = None
+    last_seen: AwareDatetime | None = None
+    is_online: bool | None = None
 
 
 class ApiNamed(_Lenient):
@@ -182,6 +185,9 @@ class StateLocation(_Lenient):
 class StateUser(_Lenient):
     id: int | str | None = None
     name: str | None = None
+    created: AwareDatetime | None = None
+    lastSeen: AwareDatetime | None = None
+    isOnline: bool | None = None
 
 
 class StateAd(_Lenient):

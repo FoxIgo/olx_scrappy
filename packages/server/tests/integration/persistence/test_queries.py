@@ -7,7 +7,12 @@ from decimal import Decimal
 
 import pytest
 
-from scrappy.application.ports.queries import OfferFilter, OfferListItem, RelevanceFilter
+from scrappy.application.ports.queries import (
+    LivenessFilter,
+    OfferFilter,
+    OfferListItem,
+    RelevanceFilter,
+)
 from scrappy.application.ports.unit_of_work import UnitOfWork
 from scrappy.domain.category import CategoryName
 from scrappy.domain.extraction import AttributePredicate, Comparison
@@ -255,3 +260,13 @@ async def test_filter_by_delivery(
     assert "olx_pl:1" not in {str(i.offer.id) for i in no_delivery}
     assert "olx_pl:2" not in {str(i.offer.id) for i in no_delivery}
     assert "olx_pl:3" in {str(i.offer.id) for i in no_delivery}
+
+
+async def test_filter_by_liveness(
+    both: tuple[InMemoryOfferQueries, SqlOfferQueries],
+) -> None:
+    mem, sql = both
+    query = OfferFilter(liveness=LivenessFilter.ALIVE)
+    expected = await mem.list_offers(query)
+    actual = await sql.list_offers(query)
+    assert [str(i.offer.id) for i in actual] == [str(i.offer.id) for i in expected]

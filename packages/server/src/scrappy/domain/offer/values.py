@@ -6,9 +6,10 @@ import hashlib
 import json
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
-from scrappy.domain.shared import InvalidValueError, Money, SourceId
+from scrappy.domain.shared import InvalidValueError, Money, SourceId, require_aware_or_none
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +125,13 @@ class SellerRef:
     external_id: str | None = None
     name: str | None = None
     is_business: bool | None = None
+    created_at: datetime | None = None
+    last_seen_at: datetime | None = None
+    is_online: bool | None = None
+
+    def __post_init__(self) -> None:
+        require_aware_or_none(self.created_at, "created_at")
+        require_aware_or_none(self.last_seen_at, "last_seen_at")
 
 
 @dataclass(frozen=True, slots=True)

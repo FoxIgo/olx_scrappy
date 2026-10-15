@@ -1,5 +1,10 @@
 """Offer aggregate, observations and the change/re-fetch rules (R4, R7, R8, R9)."""
 
+from scrappy.domain.offer.liveness import (
+    LivenessEvaluation,
+    LivenessStatus,
+    evaluate_liveness,
+)
 from scrappy.domain.offer.observation import (
     DETAIL_FIELDS,
     LISTING_FIELDS,
@@ -33,6 +38,8 @@ __all__ = [
     "ContentHash",
     "FieldChange",
     "FieldValue",
+    "LivenessEvaluation",
+    "LivenessStatus",
     "ObservationLevel",
     "Offer",
     "OfferId",
@@ -45,6 +52,7 @@ __all__ = [
     "SellerRef",
     "TrackedField",
     "compute_content_hash",
+    "evaluate_liveness",
     "needs_details",
     "snapshot_for",
     "status_after_fetch",

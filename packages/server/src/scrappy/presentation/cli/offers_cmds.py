@@ -8,7 +8,12 @@ from typing import Annotated
 import typer
 
 from scrappy.application.errors import InvalidRequestError, NotFoundError
-from scrappy.application.ports.queries import OfferFilter, OfferListItem, RelevanceFilter
+from scrappy.application.ports.queries import (
+    LivenessFilter,
+    OfferFilter,
+    OfferListItem,
+    RelevanceFilter,
+)
 from scrappy.domain.category import CategoryName
 from scrappy.domain.offer import OfferId, OfferStatus
 from scrappy.domain.search import SearchName
@@ -72,6 +77,17 @@ def list_cmd(
             help="Filter by OLX delivery (safe buy) availability.",
         ),
     ] = None,
+    alive: Annotated[
+        bool | None,
+        typer.Option(
+            "--alive/--all-liveness",
+            help="Filter alive offers only (hides stale and zombie/ghost offers).",
+        ),
+    ] = None,
+    liveness: Annotated[
+        str | None,
+        typer.Option("--liveness", help="all | alive | stale | zombie"),
+    ] = None,
     category: Annotated[
         str | None, typer.Option("--category", help="Category of the latest extraction.")
     ] = None,
@@ -85,9 +101,20 @@ def list_cmd(
     async def go(app: Services) -> None:
         if sort not in SORTS:
             raise InvalidRequestError(f"unknown sort {sort!r}; expected one of: {', '.join(SORTS)}")
+        liveness_filter = LivenessFilter.ALL
+        if alive is True:
+            liveness_filter = LivenessFilter.ALIVE
+        elif liveness:
+            try:
+                liveness_filter = LivenessFilter(liveness.lower())
+            except ValueError as exc:
+                raise InvalidRequestError(
+                    f"unknown liveness {liveness!r}; expected one of: all, alive, stale, zombie"
+                ) from exc
         query = OfferFilter(
             search=SearchName(search),
             relevance=RelevanceFilter.RELEVANT if relevant else RelevanceFilter.ALL,
+            liveness=liveness_filter,
             statuses=_statuses(status),
             category=CategoryName(category) if category else None,
             attributes=parse_wheres(where or ()),
