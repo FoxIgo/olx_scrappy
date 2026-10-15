@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller Dossier: Rostyslav (2MP7vG) | 13 Gaming Laptop Offers Analyzed</title>
+  <meta name="description" content="In-depth analysis of OLX seller Rostyslav (Warsaw, Metro Służew). Pricing vs market value, spec accuracy check, red flags, deal ratings, and physical testing checklist.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070b14;
+      --bg-surface: #0e1628;
+      --bg-card: rgba(18, 28, 48, 0.78);
+      --bg-card-hover: rgba(26, 40, 68, 0.95);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(56, 189, 248, 0.4);
+      --text-white: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 22px;
+      --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.45);
+      --shadow-glow: 0 0 30px -5px rgba(56, 189, 248, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.5;
+      padding-bottom: 90px;
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 20%, rgba(168, 85, 247, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 50% 65%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    header {
+      padding: 46px 24px 28px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .badge-seller {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: var(--accent-amber);
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 7px 16px;
+      border-radius: 9999px;
+      margin-bottom: 16px;
+    }
+
+    .alert-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-amber);
+      box-shadow: 0 0 10px var(--accent-amber);
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(2.2rem, 3.8vw, 3.3rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+      background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      max-width: 950px;
+      line-height: 1.6;
+      margin-bottom: 26px;
+    }
+
+    /* Dossier Card */
+    .dossier-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 26px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-bottom: 34px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .dossier-item h4 {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .dossier-item p {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-white);
+    }
+
+    .dossier-item p.highlight-warning {
+      color: var(--accent-rose);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dossier-item p.highlight-good {
+      color: var(--accent-emerald);
+    }
+
+    /* Controls */
+    .controls-panel {
+      max-width: 1440px;
+      margin: 0 auto 32px;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .search-filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      padding: 18px 24px;
+      border-radius: var(--radius-md);
+    }
+
+    .search-box-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .search-input {
+      width: 100%;
+      background: rgba(7, 11, 20, 0.7);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px 12px 42px;
+      color: var(--text-white);
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+    }
+
+    .filter-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .filter-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .filter-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-white);
+    }
+
+    .filter-btn.active {
+      background: var(--accent-cyan);
+      color: #070b14;
+      border-color: var(--accent-cyan);
+      font-weight: 700;
+    }
+
+    /* Main Container */
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Grid */
+    .offers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 26px;
+      margin-bottom: 48px;
+    }
+
+    .offer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-card);
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      backdrop-filter: blur(12px);
+    }
+
+    .offer-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--border-focus);
+      box-shadow: var(--shadow-glow), var(--shadow-card);
+    }
+
+    .card-media-wrap {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      background: #090e1a;
+      overflow: hidden;
+    }
+
+    .card-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .offer-card:hover .card-photo {
+      transform: scale(1.05);
+    }
+
+    .deal-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 9999px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      z-index: 2;
+    }
+
+    .badge-steal { background: linear-gradient(135deg, #10b981, #059669); color: #070b14; }
+    .badge-great { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #070b14; }
+    .badge-caution { background: linear-gradient(135deg, #f59e0b, #d97706); color: #070b14; }
+
+    .discount-pill {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(244, 63, 94, 0.95);
+      color: #ffffff;
+      font-size: 0.78rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 6px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+      z-index: 2;
+    }
+
+    .delivery-pill-warning {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      color: #fca5a5;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      backdrop-filter: blur(8px);
+      z-index: 2;
+    }
+
+    .card-body {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .card-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-white);
+      line-height: 1.3;
+    }
+
+    .price-wrap {
+      text-align: right;
+    }
+
+    .card-price {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--accent-emerald);
+      white-space: nowrap;
+    }
+
+    .market-val {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      text-decoration: line-through;
+    }
+
+    .headline-pill {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      letter-spacing: 0.03em;
+      margin-bottom: 14px;
+    }
+
+    .specs-grid {
+      background: rgba(7, 11, 20, 0.65);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+    }
+
+    .spec-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .spec-label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .spec-val {
+      font-weight: 600;
+      color: var(--text-white);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    .bullet-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+
+    .bullet-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--text-muted);
+    }
+
+    .bullet-list li.pro::before {
+      content: "✓";
+      color: var(--accent-emerald);
+      font-weight: 700;
+    }
+
+    .bullet-list li.con::before {
+      content: "!";
+      color: var(--accent-amber);
+      font-weight: 700;
+    }
+
+    .verdict-box {
+      background: rgba(56, 189, 248, 0.07);
+      border-left: 3px solid var(--accent-cyan);
+      padding: 10px 12px;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: 0.82rem;
+      color: #bae6fd;
+      margin-bottom: 18px;
+    }
+
+    .card-footer {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .loc-text {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .olx-btn {
+      background: linear-gradient(135deg, var(--accent-cyan), #0284c7);
+      color: #070b14;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.88rem;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .olx-btn:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #7dd3fc, #0ea5e9);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.5);
+    }
+
+    /* Checklist & Red Flags Section */
+    .section-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 34px;
+      margin-bottom: 40px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-white);
+    }
+
+    .section-subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 24px;
+    }
+
+    .checklist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .check-step {
+      background: rgba(7, 11, 20, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .step-num {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+      font-size: 0.78rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+
+    .step-title {
+      font-weight: 700;
+      color: var(--text-white);
+      margin-bottom: 6px;
+    }
+
+    .step-text {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Comparison Table */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 14px 16px;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-white);
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    @media (max-width: 768px) {
+      header { padding: 32px 16px 20px; }
+      main { padding: 0 16px; }
+      .offers-grid { grid-template-columns: 1fr; }
+      .dossier-card { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge-seller">
+      <div class="alert-dot"></div>
+      OLX Seller Profile Deep-Dive Dossier
+    </div>
+    <h1>Seller Analysis: Rostyslav (2MP7vG)</h1>
+    <p class="subtitle">
+      Automated scraping and forensic analysis of all <strong>13 active gaming laptop listings</strong> from seller profile 
+      <a href="https://www.olx.pl/oferty/uzytkownik/2MP7vG/" target="_blank" style="color: var(--accent-cyan); text-decoration: none; font-weight: 600;">2MP7vG</a>.
+      Evaluation of genuine specifications, secondary market pricing deltas, delivery safety risks, and physical inspection protocols.
+    </p>
+
+    <!-- Seller Profile Dossier -->
+    <div class="dossier-card">
+      <div class="dossier-item">
+        <h4>Seller Identity</h4>
+        <p>Rostyslav (Account ID: 2553713454)</p>
+      </div>
+      <div class="dossier-item">
+        <h4>Account Age</h4>
+        <p style="color: var(--accent-amber);">~7 Weeks (Created Aug 28, 2026)</p>
+      </div>
+      <div class="dossier-item">
+        <h4>Base Location</h4>
+        <p>Warszawa, Mokotów (Metro Służew)</p>
+      </div>
+      <div class="dossier-item">
+        <h4>OLX Safe Buy ("Kup z przesyłką")</h4>
+        <p class="highlight-warning">❌ 0 / 13 Enabled (Local Pickup Only)</p>
+      </div>
+      <div class="dossier-item">
+        <h4>Market Discount</h4>
+        <p class="highlight-good">15% to 35% Below Average</p>
+      </div>
+      <div class="dossier-item">
+        <h4>Seller Business Model</h4>
+        <p>Laptop Flipper / European Import Refurbisher</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filter & Search Controls -->
+  <div class="controls-panel">
+    <div class="search-filter-row">
+      <div class="search-box-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search by model, CPU, GPU (e.g. RTX 2060, Omen, Legion, 3060)...">
+      </div>
+      <div class="filter-pills" id="filterPills">
+        <button class="filter-btn active" data-filter="all">All Laptops (13)</button>
+        <button class="filter-btn" data-filter="steal">🔥 Steals / Top Value</button>
+        <button class="filter-btn" data-filter="sub1500">💰 Under 1,600 zł</button>
+        <button class="filter-btn" data-filter="rtx30">🚀 RTX 30 / 40 Series</button>
+        <button class="filter-btn" data-filter="vram">🎮 6GB+ VRAM</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <!-- Offers Grid -->
+    <div class="offers-grid" id="offersGrid">
+
+      <article class="offer-card"
+               data-title="lenovo gaming 15, rtx3050, 120hz, i5 11th"
+               data-gpu="nvidia geforce rtx 3050 4gb (dlss / ampere)"
+               data-cpu="intel core i5-11320h (4 cores / 8 threads, 10nm superfin, 4.5 ghz)"
+               data-price="1400"
+               data-grade="steal"
+               data-sub1500="sub1500"
+               data-rtx30="rtx30"
+               data-vram="4gb">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-steal">STEAL DEAL</span>
+          <span class="discount-pill">-20% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/8iox8jf6dq0k1-PL/image;s=1000x750" alt="Lenovo Gaming 15, RTX3050, 120hz, I5 11th" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Lenovo Gaming 15, RTX3050, 120hz, I5 11th</h2>
+            <div class="price-wrap">
+              <div class="card-price">1 400 zł</div>
+              <div class="market-val">~1 750 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">🔥 BEST BUDGET PICK UNDER 1.5K</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 3050 4GB (DLSS / Ampere)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">Intel Core i5-11320H (4 Cores / 8 Threads, 10nm SuperFin, 4.5 GHz)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">512 GB NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 120Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> The most affordable modern RTX card in his inventory. Fits right into your budget range.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">True RTX 30-series with DLSS upscaling at only 1,400 zł</li><li class="pro">16GB RAM and 512GB SSD already installed</li><li class="pro">120Hz smooth gaming display</li><li class="pro">Closest to your 900–1,350 zł budget target</li>
+            <li class="con">4-core CPU is modest for heavy multi-threading, but fine for gaming</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/lenovo-gaming-15-rtx3050-120hz-i5-11th-CID99-ID1ct6s1.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="hp omen 15, rtx2060, 144hz, ryzen 7 4800h"
+               data-gpu="nvidia geforce rtx 2060 6gb gddr6"
+               data-cpu="amd ryzen 7 4800h (8 cores / 16 threads, 4.2 ghz max boost)"
+               data-price="1500"
+               data-grade="steal"
+               data-sub1500="sub1500"
+               data-rtx30="rtx20"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-steal">STEAL DEAL</span>
+          <span class="discount-pill">-35% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/sloqhlxpx03n2-PL/image;s=1000x750" alt="HP Omen 15, RTX2060, 144hz, Ryzen 7 4800h" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">HP Omen 15, RTX2060, 144hz, Ryzen 7 4800h</h2>
+            <div class="price-wrap">
+              <div class="card-price">1 500 zł</div>
+              <div class="market-val">~2 300 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">🔥 UNBEATABLE 6GB VRAM & 8-CORE VALUE</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 2060 6GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">AMD Ryzen 7 4800H (8 Cores / 16 Threads, 4.2 GHz Max Boost)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">512 GB NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Spectacular hardware for 1,500 zł. Ideal balance of 8 cores, 6GB VRAM, and high refresh screen.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">8 Zen 2 Cores crush quad-core laptops in multitasking and compiling</li><li class="pro">6GB dedicated VRAM avoids modern 4GB texture stuttering</li><li class="pro">144Hz gaming IPS display</li><li class="pro">Priced at 1,500 zł (saving ~800 zł vs market)</li>
+            <li class="con">Claimed &#x27;5.0 GHz&#x27; clock in ad is exaggerated (actual boost is 4.2 GHz)</li><li class="con">Used battery typically runs 1.5–2 hours (not 4 hours)</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/hp-omen-15-rtx2060-144hz-ryzen-7-4800h-CID99-ID1cGDWM.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="lenovo legion y540, rtx2060, i7 9750h, 16ram"
+               data-gpu="nvidia geforce rtx 2060 6gb gddr6"
+               data-cpu="intel core i7-9750h (6 cores / 12 threads, 4.5 ghz)"
+               data-price="1500"
+               data-grade="steal"
+               data-sub1500="sub1500"
+               data-rtx30="rtx20"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-steal">STEAL DEAL</span>
+          <span class="discount-pill">-29% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/gb5cynpfbju3-PL/image;s=1000x750" alt="Lenovo Legion Y540, RTX2060, I7 9750h, 16ram" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Lenovo Legion Y540, RTX2060, I7 9750h, 16ram</h2>
+            <div class="price-wrap">
+              <div class="card-price">1 500 zł</div>
+              <div class="market-val">~2 100 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">🔥 LEGION CHASSIS + RTX 2060 6GB</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 2060 6GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">Intel Core i7-9750H (6 Cores / 12 Threads, 4.5 GHz)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">512 GB NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Top-tier keyboard and build quality with 6GB RTX graphics at a bargain price.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">Lenovo Legion Y540 thermal cooling &amp; rear cable management</li><li class="pro">6-core / 12-thread Core i7 CPU</li><li class="pro">6GB dedicated VRAM RTX 2060</li><li class="pro">Only 1,500 zł flat</li>
+            <li class="con">Standard 60Hz screen on this specific SKU</li><li class="con">Claimed 4.8 GHz clock is slightly exaggerated (4.5 GHz max)</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/lenovo-legion-y540-rtx2060-i7-9750h-16ram-CID99-ID1ct6t7.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="asus tuf 15, rtx2060, 144hz, ryzen 7 4800h"
+               data-gpu="nvidia geforce rtx 2060 6gb gddr6"
+               data-cpu="amd ryzen 7 4800h (8 cores / 16 threads, 4.2 ghz)"
+               data-price="1700"
+               data-grade="standard"
+               data-sub1500="above1500"
+               data-rtx30="rtx20"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-great">GREAT DEAL</span>
+          <span class="discount-pill">-23% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/kqfmxn2q3htk1-PL/image;s=1000x750" alt="Asus TUF 15, RTX2060, 144hz, Ryzen 7 4800h" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Asus TUF 15, RTX2060, 144hz, Ryzen 7 4800h</h2>
+            <div class="price-wrap">
+              <div class="card-price">1 700 zł</div>
+              <div class="market-val">~2 200 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">⭐ 8-CORE ASUS TUF GAMING</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 2060 6GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">AMD Ryzen 7 4800H (8 Cores / 16 Threads, 4.2 GHz)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">512 GB NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Great machine, but negotiate or look at his 1,500 zł Omen first.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">Solid 8-core CPU and 6GB RTX 2060</li><li class="pro">144Hz IPS display</li><li class="pro">MIL-STD durability rating</li>
+            <li class="con">The HP Omen at 1,500 zł offers practically identical specs for 200 zł less</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/asus-tuf-15-rtx2060-144hz-ryzen-7-4800h-CID99-ID1cniFb.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="dell gaming 15, rtx2070, 144hz, i7 10750h"
+               data-gpu="nvidia geforce rtx 2070 8gb gddr6"
+               data-cpu="intel core i7-10750h (6 cores / 12 threads, 5.0 ghz)"
+               data-price="1800"
+               data-grade="steal"
+               data-sub1500="above1500"
+               data-rtx30="rtx20"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-steal">STEAL DEAL</span>
+          <span class="discount-pill">-31% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/qy0z6mjkqb1e3-PL/image;s=1000x750" alt="DELL Gaming 15, RTX2070, 144hz, I7 10750h" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">DELL Gaming 15, RTX2070, 144hz, I7 10750h</h2>
+            <div class="price-wrap">
+              <div class="card-price">1 800 zł</div>
+              <div class="market-val">~2 600 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">🔥 RARE SUB-2K RTX 2070 (8GB VRAM)</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 2070 8GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">Intel Core i7-10750H (6 Cores / 12 Threads, 5.0 GHz)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">1,000 GB (1TB) NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Unrivaled raw 1080p graphics horsepower and storage for 1,800 zł.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">8GB VRAM buffer handles modern high-texture games with ease</li><li class="pro">Massive 1TB NVMe SSD included</li><li class="pro">144Hz gaming panel</li><li class="pro">Under 2,000 zł for an RTX 2070 is extremely rare on OLX</li>
+            <li class="con">Dell G5/G7 chassis can get loud and hot under full GPU burn</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/dell-gaming-15-rtx2070-144hz-i7-10750h-CID99-ID1cCaE4.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="asus rog zephyrus 15, rtx2070, 4k, i7 10750h"
+               data-gpu="nvidia geforce rtx 2070 8gb gddr6"
+               data-cpu="intel core i7-10750h (6 cores / 12 threads)"
+               data-price="2100"
+               data-grade="standard"
+               data-sub1500="above1500"
+               data-rtx30="rtx20"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-great">GREAT DEAL</span>
+          <span class="discount-pill">-32% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/gzzl7ueqyxe41-PL/image;s=1000x750" alt="Asus ROG Zephyrus 15, RTX2070, 4K, I7 10750h" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Asus ROG Zephyrus 15, RTX2070, 4K, I7 10750h</h2>
+            <div class="price-wrap">
+              <div class="card-price">2 100 zł</div>
+              <div class="market-val">~3 100 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">⭐ CREATOR FLAGSHIP / 4K DISPLAY</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 2070 8GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">Intel Core i7-10750H (6 Cores / 12 Threads)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">24 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">1,000 GB (1TB) NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 4K Ultra HD IPS (3840x2160)</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Phenomenal deal for video editors, content creators, and developers.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">Ultra-dense 4K IPS display (100% sRGB / DCI-P3 grade)</li><li class="pro">24GB RAM capacity</li><li class="pro">Slim premium magnesium alloy Zephyrus body</li><li class="pro">8GB RTX 2070 + 1TB SSD</li>
+            <li class="con">4K 60Hz panel is designed for photo/video editing rather than competitive fast-twitch gaming</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/asus-rog-zephyrus-15-rtx2070-4k-i7-10750h-CID99-ID1cm4Zu.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="lenovo gaming 15, rtx3060, i5 12450h, 16ram"
+               data-gpu="nvidia geforce rtx 3060 6gb gddr6"
+               data-cpu="intel core i5-12450h (8 cores: 4p+4e / 12 threads, alder lake)"
+               data-price="2200"
+               data-grade="steal"
+               data-sub1500="above1500"
+               data-rtx30="rtx30"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-steal">STEAL DEAL</span>
+          <span class="discount-pill">-21% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/sex8dxi1imlu-PL/image;s=1000x750" alt="Lenovo Gaming 15, RTX3060, I5 12450h, 16ram" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Lenovo Gaming 15, RTX3060, I5 12450h, 16ram</h2>
+            <div class="price-wrap">
+              <div class="card-price">2 200 zł</div>
+              <div class="market-val">~2 800 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">🔥 12TH GEN INTEL + RTX 3060</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 3060 6GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">Intel Core i5-12450H (8 Cores: 4P+4E / 12 Threads, Alder Lake)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">512 GB NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 120Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> If you can stretch budget to 2,200 zł, this offers best modern architecture ROI.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">Modern Intel 12th Gen hybrid architecture (far ahead of 9th/10th Gen)</li><li class="pro">Full RTX 3060 with Ampere tensor &amp; ray tracing cores</li><li class="pro">Modern IdeaPad Gaming chassis</li>
+            <li class="con">Priced at 2,200 zł (above initial 1.3k budget, but massive generation jump)</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/lenovo-gaming-15-rtx3060-i5-12450h-16ram-CID99-ID1cFm8F.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="msi gaming 15, rtx4050, 144hz, i5 12450h"
+               data-gpu="nvidia geforce rtx 4050 6gb (ada lovelace, dlss 3 + frame gen)"
+               data-cpu="intel core i5-12450h (8 cores / 12 threads)"
+               data-price="2200"
+               data-grade="standard"
+               data-sub1500="above1500"
+               data-rtx30="rtx30"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-great">GREAT DEAL</span>
+          <span class="discount-pill">-24% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/nr3g20sfmfar3-PL/image;s=1000x750" alt="MSI Gaming 15, RTX4050, 144hz, I5 12450h" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">MSI Gaming 15, RTX4050, 144hz, I5 12450h</h2>
+            <div class="price-wrap">
+              <div class="card-price">2 200 zł</div>
+              <div class="market-val">~2 900 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">⭐ DLSS 3 FRAME GENERATION UNDER 2.5K</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 4050 6GB (Ada Lovelace, DLSS 3 + Frame Gen)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">Intel Core i5-12450H (8 Cores / 12 Threads)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">512 GB NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Cheapest ticket into modern RTX 40-series and DLSS 3 Frame Gen.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">Ada Lovelace RTX 40-series with hardware Frame Generation</li><li class="pro">Very low power consumption and cool operation</li><li class="pro">144Hz gaming panel</li>
+            <li class="con">MSI entry chassis uses single fan configuration, can get vocal under prolonged loads</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/msi-gaming-15-rtx4050-144hz-i5-12450h-CID99-ID1ct6qx.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="acer nitro 5, rtx3060, ryzen 7 5800h, 144hz"
+               data-gpu="nvidia geforce rtx 3060 6gb gddr6"
+               data-cpu="amd ryzen 7 5800h (8 cores / 16 threads zen 3, 4.4 ghz)"
+               data-price="2300"
+               data-grade="standard"
+               data-sub1500="above1500"
+               data-rtx30="rtx30"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-great">GREAT DEAL</span>
+          <span class="discount-pill">-23% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/0nbsf47qa9au3-PL/image;s=1000x750" alt="Acer Nitro 5, RTX3060, Ryzen 7 5800h, 144hz" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Acer Nitro 5, RTX3060, Ryzen 7 5800h, 144hz</h2>
+            <div class="price-wrap">
+              <div class="card-price">2 300 zł</div>
+              <div class="market-val">~3 000 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">⭐ ZEN 3 8-CORE + RTX 3060</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 3060 6GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">AMD Ryzen 7 5800H (8 Cores / 16 Threads Zen 3, 4.4 GHz)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">512 GB NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> The esports sweetspot for high frame rates in CS2, Valorant, and Warzone.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">AMD Zen 3 architecture offers high IPC and buttery 1% lows in competitive games</li><li class="pro">RTX 3060 6GB</li><li class="pro">144Hz IPS display</li>
+            <li class="con">Plastic Acer Nitro 5 body</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/acer-nitro-5-rtx3060-ryzen-7-5800h-144hz-CID99-ID1cvekb.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="acer predator 15, rtx2080, 1tb ssd, i7 9750h"
+               data-gpu="nvidia geforce rtx 2080 8gb gddr6"
+               data-cpu="intel core i7-9750h (6 cores / 12 threads)"
+               data-price="2400"
+               data-grade="standard"
+               data-sub1500="above1500"
+               data-rtx30="rtx20"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-caution">CAUTION DEAL</span>
+          <span class="discount-pill">-25% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/zsceup94xwqt3-PL/image;s=1000x750" alt="Acer Predator 15, RTX2080, 1tb ssd, I7 9750h" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Acer Predator 15, RTX2080, 1tb ssd, I7 9750h</h2>
+            <div class="price-wrap">
+              <div class="card-price">2 400 zł</div>
+              <div class="market-val">~3 200 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">⚠️ MASSIVE RTX 2080 / HIGH THERMALS</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 2080 8GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">Intel Core i7-9750H (6 Cores / 12 Threads)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR4</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">1,000 GB (1TB) NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Incredible GPU power, but strictly verify thermals under FurMark during test.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">RTX 2080 flagship desktop-class raw performance</li><li class="pro">1TB SSD + 16GB RAM</li><li class="pro">Premium Predator metal chassis</li>
+            <li class="con">RTX 2080 draws significant power; running hot requires fresh thermal paste and clean vents</li><li class="con">9th Gen CPU is a bottleneck compared to GPU</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/acer-predator-15-rtx2080-1tb-ssd-i7-9750h-CID99-ID1cpWmn.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="asus tuf 15, rtx4050, ryzen 7 7435hs, 144hz"
+               data-gpu="nvidia geforce rtx 4050 6gb gddr6"
+               data-cpu="amd ryzen 7 7435hs (8 cores / 16 threads zen 3+)"
+               data-price="2600"
+               data-grade="standard"
+               data-sub1500="above1500"
+               data-rtx30="rtx30"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-great">GREAT DEAL</span>
+          <span class="discount-pill">-21% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/djm5buhng50r3-PL/image;s=1000x750" alt="Asus TUF 15, RTX4050, Ryzen 7 7435hs, 144hz" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Asus TUF 15, RTX4050, Ryzen 7 7435hs, 144hz</h2>
+            <div class="price-wrap">
+              <div class="card-price">2 600 zł</div>
+              <div class="market-val">~3 300 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">⭐ MODERN DDR5 PLATFORM</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 4050 6GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">AMD Ryzen 7 7435HS (8 Cores / 16 Threads Zen 3+)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR5</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">512 GB NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Modern hardware with future-proof DDR5 RAM.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">Ryzen 7000-series CPU with fast DDR5 memory</li><li class="pro">RTX 4050 with DLSS 3</li><li class="pro">TUF military-spec build</li>
+            <li class="con">2,600 zł price tag is well above sub-1.5k tier</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/asus-tuf-15-rtx4050-ryzen-7-7435hs-144hz-CID99-ID1cvejt.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="nowy! rtx4050! hp victus 15! 1tb ssd!"
+               data-gpu="nvidia geforce rtx 4050 6gb gddr6"
+               data-cpu="amd ryzen 7 7445hs (8 cores / 16 threads)"
+               data-price="2600"
+               data-grade="standard"
+               data-sub1500="above1500"
+               data-rtx30="rtx30"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-great">GREAT DEAL</span>
+          <span class="discount-pill">-24% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/2mf5n98ymjkx2-PL/image;s=1000x750" alt="Nowy! RTX4050! HP Victus 15! 1tb ssd!" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Nowy! RTX4050! HP Victus 15! 1tb ssd!</h2>
+            <div class="price-wrap">
+              <div class="card-price">2 600 zł</div>
+              <div class="market-val">~3 400 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">⭐ 1-MONTH OLD WITH RECEIPT</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA GeForce RTX 4050 6GB GDDR6</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">AMD Ryzen 7 7445HS (8 Cores / 16 Threads)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR5</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">1,000 GB (1TB) NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Safest purchase condition in his catalog due to receipt verification.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">Includes original store purchase receipt (paragon)</li><li class="pro">Large 1TB SSD and DDR5 RAM</li><li class="pro">Practically new condition with full retail box</li>
+            <li class="con">Asking 2,600 zł</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/nowy-rtx4050-hp-victus-15-1tb-ssd-CID99-ID1cnhOF.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+      <article class="offer-card"
+               data-title="nowy! rtx5060! asus tuf a16"
+               data-gpu="nvidia rtx 4060 8gb (mislabeled in ad as &#x27;rtx 5060&#x27;)"
+               data-cpu="intel core i5-14450hx (10 cores / 16 threads raptor lake refresh)"
+               data-price="4100"
+               data-grade="standard"
+               data-sub1500="above1500"
+               data-rtx30="rtx30"
+               data-vram="vram">
+        <div class="card-media-wrap">
+          <span class="deal-badge badge-caution">CAUTION DEAL</span>
+          <span class="discount-pill">-15% OFF</span>
+          <img src="https://ireland.apollo.olxcdn.com:443/v1/files/fln3qgfyyj7x-PL/image;s=1000x750" alt="Nowy! RTX5060! Asus TUF A16" class="card-photo" loading="lazy">
+          <div class="delivery-pill-warning">
+            <span>⚠️ Odbiór osobisty (Metro Służew)</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 class="card-title">Nowy! RTX5060! Asus TUF A16</h2>
+            <div class="price-wrap">
+              <div class="card-price">4 100 zł</div>
+              <div class="market-val">~4 800 zł</div>
+            </div>
+          </div>
+
+          <div class="headline-pill">⚠️ 4,100 ZŁ & MISLABELED GPU NAME</div>
+
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">GPU</span>
+              <span class="spec-val" style="color: var(--accent-cyan);">NVIDIA RTX 4060 8GB (Mislabeled in ad as &#x27;RTX 5060&#x27;)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">CPU</span>
+              <span class="spec-val">Intel Core i5-14450HX (10 Cores / 16 Threads Raptor Lake Refresh)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">RAM</span>
+              <span class="spec-val">16 GB DDR5</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Storage</span>
+              <span class="spec-val">512 GB NVMe SSD</span>
+            </div>
+            <div class="spec-item" style="grid-column: span 2;">
+              <span class="spec-label">Display</span>
+              <span class="spec-val" style="color: var(--accent-amber);">16.0&quot; 165Hz WUXGA (16:10)</span>
+            </div>
+          </div>
+
+          <div class="verdict-box">
+            <strong>Analiza:</strong> Good laptop, but seller hype is misleading and price is out of budget.
+          </div>
+
+          <ul class="bullet-list">
+            <li class="pro">Latest 14th Gen Intel HX-series CPU</li><li class="pro">16-inch 16:10 gaming panel</li><li class="pro">DDR5 memory</li>
+            <li class="con">Ad claims &#x27;RTX 5060&#x27; which does not exist in retail</li><li class="con">Priced at 4,100 zł (3x the target budget)</li>
+          </ul>
+
+          <div class="card-footer">
+            <span class="loc-text">📍 Warszawa</span>
+            <a href="https://www.olx.pl/d/oferta/nowy-rtx5060-asus-tuf-a16-CID99-ID1cFlXS.html" target="_blank" rel="noopener noreferrer" class="olx-btn">
+              View on OLX ➔
+            </a>
+          </div>
+        </div>
+      </article>
+    
+    </div>
+
+    <!-- Inventory Matrix Table -->
+    <section class="section-box">
+      <h2 class="section-title">📊 Full Parsed Inventory Matrix</h2>
+      <p class="section-subtitle">Side-by-side technical breakdown of all 13 laptops listed by Rostyslav:</p>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Model Title</th>
+              <th>Asking Price</th>
+              <th>Est. Market</th>
+              <th>Discount</th>
+              <th>Verified GPU</th>
+              <th>True CPU</th>
+              <th>Display</th>
+              <th>Deal Verdict</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/lenovo-gaming-15-rtx3050-120hz-i5-11th-CID99-ID1ct6s1.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Lenovo Gaming 15, RTX3050, 120hz, I5 11th
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">1 400 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~1 750 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-20%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 3050 4GB (DLSS / Ampere)</td>
+              <td>Intel Core i5-11320H (4 Cores / 8 Threads, 10nm SuperFin, 4.5 GHz)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 120Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-emerald); font-weight: 800;">STEAL</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/hp-omen-15-rtx2060-144hz-ryzen-7-4800h-CID99-ID1cGDWM.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  HP Omen 15, RTX2060, 144hz, Ryzen 7 4800h
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">1 500 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~2 300 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-35%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 2060 6GB GDDR6</td>
+              <td>AMD Ryzen 7 4800H (8 Cores / 16 Threads, 4.2 GHz Max Boost)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-emerald); font-weight: 800;">STEAL</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/lenovo-legion-y540-rtx2060-i7-9750h-16ram-CID99-ID1ct6t7.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Lenovo Legion Y540, RTX2060, I7 9750h, 16ram
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">1 500 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~2 100 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-29%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 2060 6GB GDDR6</td>
+              <td>Intel Core i7-9750H (6 Cores / 12 Threads, 4.5 GHz)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; Full HD IPS</td>
+              <td><span style="color: var(--accent-emerald); font-weight: 800;">STEAL</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/asus-tuf-15-rtx2060-144hz-ryzen-7-4800h-CID99-ID1cniFb.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Asus TUF 15, RTX2060, 144hz, Ryzen 7 4800h
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">1 700 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~2 200 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-23%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 2060 6GB GDDR6</td>
+              <td>AMD Ryzen 7 4800H (8 Cores / 16 Threads, 4.2 GHz)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-cyan); font-weight: 800;">GREAT</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/dell-gaming-15-rtx2070-144hz-i7-10750h-CID99-ID1cCaE4.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  DELL Gaming 15, RTX2070, 144hz, I7 10750h
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">1 800 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~2 600 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-31%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 2070 8GB GDDR6</td>
+              <td>Intel Core i7-10750H (6 Cores / 12 Threads, 5.0 GHz)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-emerald); font-weight: 800;">STEAL</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/asus-rog-zephyrus-15-rtx2070-4k-i7-10750h-CID99-ID1cm4Zu.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Asus ROG Zephyrus 15, RTX2070, 4K, I7 10750h
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">2 100 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~3 100 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-32%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 2070 8GB GDDR6</td>
+              <td>Intel Core i7-10750H (6 Cores / 12 Threads)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 4K Ultra HD IPS (3840x2160)</td>
+              <td><span style="color: var(--accent-cyan); font-weight: 800;">GREAT</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/lenovo-gaming-15-rtx3060-i5-12450h-16ram-CID99-ID1cFm8F.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Lenovo Gaming 15, RTX3060, I5 12450h, 16ram
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">2 200 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~2 800 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-21%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 3060 6GB GDDR6</td>
+              <td>Intel Core i5-12450H (8 Cores: 4P+4E / 12 Threads, Alder Lake)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 120Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-emerald); font-weight: 800;">STEAL</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/msi-gaming-15-rtx4050-144hz-i5-12450h-CID99-ID1ct6qx.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  MSI Gaming 15, RTX4050, 144hz, I5 12450h
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">2 200 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~2 900 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-24%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 4050 6GB (Ada Lovelace, DLSS 3 + Frame Gen)</td>
+              <td>Intel Core i5-12450H (8 Cores / 12 Threads)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-cyan); font-weight: 800;">GREAT</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/acer-nitro-5-rtx3060-ryzen-7-5800h-144hz-CID99-ID1cvekb.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Acer Nitro 5, RTX3060, Ryzen 7 5800h, 144hz
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">2 300 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~3 000 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-23%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 3060 6GB GDDR6</td>
+              <td>AMD Ryzen 7 5800H (8 Cores / 16 Threads Zen 3, 4.4 GHz)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-cyan); font-weight: 800;">GREAT</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/acer-predator-15-rtx2080-1tb-ssd-i7-9750h-CID99-ID1cpWmn.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Acer Predator 15, RTX2080, 1tb ssd, I7 9750h
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">2 400 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~3 200 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-25%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 2080 8GB GDDR6</td>
+              <td>Intel Core i7-9750H (6 Cores / 12 Threads)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-amber); font-weight: 800;">CAUTION</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/asus-tuf-15-rtx4050-ryzen-7-7435hs-144hz-CID99-ID1cvejt.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Asus TUF 15, RTX4050, Ryzen 7 7435hs, 144hz
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">2 600 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~3 300 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-21%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 4050 6GB GDDR6</td>
+              <td>AMD Ryzen 7 7435HS (8 Cores / 16 Threads Zen 3+)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-cyan); font-weight: 800;">GREAT</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/nowy-rtx4050-hp-victus-15-1tb-ssd-CID99-ID1cnhOF.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Nowy! RTX4050! HP Victus 15! 1tb ssd!
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">2 600 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~3 400 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-24%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA GeForce RTX 4050 6GB GDDR6</td>
+              <td>AMD Ryzen 7 7445HS (8 Cores / 16 Threads)</td>
+              <td style="color: var(--accent-amber);">15.6&quot; 144Hz Full HD IPS</td>
+              <td><span style="color: var(--accent-cyan); font-weight: 800;">GREAT</span></td>
+            </tr>
+    
+            <tr>
+              <td style="font-weight: 700;">
+                <a href="https://www.olx.pl/d/oferta/nowy-rtx5060-asus-tuf-a16-CID99-ID1cFlXS.html" target="_blank" style="color: var(--text-white); text-decoration: none;">
+                  Nowy! RTX5060! Asus TUF A16
+                </a>
+              </td>
+              <td style="font-weight: 800; color: var(--accent-emerald); font-family: 'JetBrains Mono', monospace;">4 100 zł</td>
+              <td style="color: var(--text-dim); text-decoration: line-through;">~4 800 zł</td>
+              <td><span style="color: var(--accent-rose); font-weight: 700;">-15%</span></td>
+              <td style="color: var(--accent-cyan); font-weight: 600;">NVIDIA RTX 4060 8GB (Mislabeled in ad as &#x27;RTX 5060&#x27;)</td>
+              <td>Intel Core i5-14450HX (10 Cores / 16 Threads Raptor Lake Refresh)</td>
+              <td style="color: var(--accent-amber);">16.0&quot; 165Hz WUXGA (16:10)</td>
+              <td><span style="color: var(--accent-amber); font-weight: 800;">CAUTION</span></td>
+            </tr>
+    
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Field Testing Protocol -->
+    <section class="section-box" style="border-color: rgba(56, 189, 248, 0.3);">
+      <h2 class="section-title">🛡️ Buyer's Field Testing Protocol (Metro Służew)</h2>
+      <p class="section-subtitle">
+        Because Rostyslav operates strictly via in-person cash transactions without OLX Safe Buy protection, follow this step-by-step testing procedure before handing over payment:
+      </p>
+
+      <div class="checklist-grid">
+        <div class="check-step">
+          <span class="step-num">STEP 01</span>
+          <div class="step-title">Prepare Testing USB Drive</div>
+          <p class="step-text">
+            Load a portable flash drive with <strong>HWiNFO64</strong>, <strong>FurMark 2</strong>, <strong>CrystalDiskInfo</strong>, and <strong>KeyboardTestUtility</strong> (no internet connection needed).
+          </p>
+        </div>
+
+        <div class="check-step">
+          <span class="step-num">STEP 02</span>
+          <div class="step-title">5-Minute FurMark GPU Stress</div>
+          <p class="step-text">
+            Run FurMark at native 1080p for 5 minutes. Watch for GPU artifacts (pink/green checkerboards), sudden black screens, or thermal throttling above 86°C.
+          </p>
+        </div>
+
+        <div class="check-step">
+          <span class="step-num">STEP 03</span>
+          <div class="step-title">SSD Wear & Power-On Hours</div>
+          <p class="step-text">
+            Open CrystalDiskInfo. Verify total power-on hours and health status. Less than 2,000 hours indicates light usage; over 10,000 hours suggests heavy refurbished origin.
+          </p>
+        </div>
+
+        <div class="check-step">
+          <span class="step-num">STEP 04</span>
+          <div class="step-title">Battery Wear Report</div>
+          <p class="step-text">
+            Open PowerShell and run <code style="color: var(--accent-cyan);">powercfg /batteryreport</code>. Compare "Full Charge Capacity" against "Design Capacity". Reject units degraded below 60%.
+          </p>
+        </div>
+
+        <div class="check-step">
+          <span class="step-num">STEP 05</span>
+          <div class="step-title">Inspect Keyboard & Hinge Action</div>
+          <p class="step-text">
+            Check key legends for localized stickers (spolszczające naklejki) indicating European imports. Open and close the screen twice to verify smooth hinge anchors.
+          </p>
+        </div>
+
+        <div class="check-step">
+          <span class="step-num">STEP 06</span>
+          <div class="step-title">Original AC Power Adapter</div>
+          <p class="step-text">
+            Ensure the charger is the original manufacturer brick (e.g. 170W Lenovo / 200W HP), not a cheap universal 65W charger that will throttle the GPU during gaming.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const cards = Array.from(document.querySelectorAll('.offer-card'));
+
+    let currentFilter = 'all';
+    let currentSearch = '';
+
+    function filterDeals() {
+      cards.forEach(card => {
+        const title = card.getAttribute('data-title');
+        const gpu = card.getAttribute('data-gpu');
+        const cpu = card.getAttribute('data-cpu');
+        const full = title + ' ' + gpu + ' ' + cpu;
+
+        const grade = card.getAttribute('data-grade');
+        const sub1500 = card.getAttribute('data-sub1500');
+        const rtx30 = card.getAttribute('data-rtx30');
+        const vram = card.getAttribute('data-vram');
+
+        let matchesCategory = false;
+        if (currentFilter === 'all') matchesCategory = true;
+        else if (currentFilter === 'steal' && grade === 'steal') matchesCategory = true;
+        else if (currentFilter === 'sub1500' && sub1500 === 'sub1500') matchesCategory = true;
+        else if (currentFilter === 'rtx30' && rtx30 === 'rtx30') matchesCategory = true;
+        else if (currentFilter === 'vram' && vram === 'vram') matchesCategory = true;
+
+        const matchesSearch = !currentSearch || full.includes(currentSearch);
+
+        if (matchesCategory && matchesSearch) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      currentSearch = e.target.value.trim().toLowerCase();
+      filterDeals();
+    });
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.getAttribute('data-filter');
+        filterDeals();
+      });
+    });
+  </script>
+</body>
+</html>

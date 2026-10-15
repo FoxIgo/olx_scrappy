@@ -49,14 +49,19 @@ def extract_state(html: str) -> dict[str, Any]:
 
 def parse_search_state(html: str) -> ParsedSearchPage:
     state = extract_state(html)
-    try:
-        listing = state["listing"]["listing"]
-        ads = listing["ads"]
-    except (KeyError, TypeError) as exc:
-        raise StateParseError("state has no listing.listing.ads") from exc
+    listing = state.get("listing", {}).get("listing")
+    if not isinstance(listing, dict):
+        listing = state.get("userListing", {}).get("userListing")
+    if not isinstance(listing, dict):
+        raise StateParseError("state has neither listing.listing nor userListing.userListing")
+    ads = listing.get("ads")
     if not isinstance(ads, list):
-        raise StateParseError("listing.listing.ads is not a list")
-    links = listing.get("links") or {}
+        raise StateParseError("listing ads is not a list")
+    user_listing = state.get("userListing")
+    user_links = (
+        user_listing.get("adsOffers", {}).get("links") if isinstance(user_listing, dict) else None
+    )
+    links = listing.get("links") or user_links or {}
     next_href = links.get("next")
     if isinstance(next_href, dict):
         next_href = next_href.get("href")  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]

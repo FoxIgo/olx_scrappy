@@ -190,7 +190,7 @@ class StateAd(_Lenient):
     id: int | str
     url: str = Field(min_length=1)
     title: str = Field(min_length=1)
-    description: str
+    description: str = ""
     status: str = Field(min_length=1)
     createdTime: AwareDatetime | None = None
     lastRefreshTime: AwareDatetime | None = None

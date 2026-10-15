@@ -95,13 +95,16 @@ def classify_cursor(cursor: str) -> CursorKind:
         return CursorKind.API
     _check_site_host(parts.hostname or "", cursor)
     segments = [s for s in unquote(parts.path).split("/") if s]
+    if len(segments) >= 2 and segments[0] == "oferty" and segments[1] == "uzytkownik":
+        return CursorKind.CATEGORY_HTML
     if segments and segments[0] == "oferty":
         return CursorKind.TRANSLATED
     if is_category_path(segments):
         return CursorKind.CATEGORY_HTML
     raise UnsupportedSearchUrl(
-        f"unsupported olx.pl search URL {cursor!r}: expected /oferty/q-<query>/ or a category "
-        "path like /elektronika/komputery/laptopy/[q-<query>/] (region paths are not supported)"
+        f"unsupported olx.pl search URL {cursor!r}: expected /oferty/q-<query>/, a seller "
+        "path /oferty/uzytkownik/<id>/, or a category path like "
+        "/elektronika/komputery/laptopy/[q-<query>/] (region paths are not supported)"
     )
 
 
