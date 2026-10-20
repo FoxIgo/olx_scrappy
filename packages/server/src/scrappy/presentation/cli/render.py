@@ -16,6 +16,7 @@ from rich.text import Text
 from scrappy.application.extraction.prepare import prepare_description
 from scrappy.application.jobs.model import Job, JobStatus
 from scrappy.application.ports.queries import OfferListItem
+from scrappy.application.use_cases.verify_offers import VerifyOfferResult
 from scrappy.domain.extraction import OfferExtraction
 from scrappy.domain.offer import (
     LivenessEvaluation,
@@ -402,3 +403,39 @@ def offer_detail(
         )
     parts.append(history if snapshots else Text("No recorded changes.", style="dim"))
     return Group(*parts)
+
+
+def verify_results_table(
+    results: Sequence[VerifyOfferResult], *, title: str = "Live verification results"
+) -> Table:
+    table = Table(title=title)
+    table.add_column("Offer", no_wrap=True)
+    table.add_column("Title", overflow="fold", ratio=3)
+    table.add_column("Previous", no_wrap=True)
+    table.add_column("Current", no_wrap=True)
+    table.add_column("Live?", no_wrap=True)
+    table.add_column("Changed?", no_wrap=True)
+    table.add_column("Message / Reason", overflow="fold", ratio=2)
+    with_url = stdout().width >= WIDE_TABLE
+    if with_url:
+        table.add_column("URL", no_wrap=True, overflow="ellipsis", max_width=40)
+
+    for r in results:
+        current_style = "green" if r.is_active else "red"
+        changed_cell = Text("YES", style="bold yellow") if r.changed else Text("no", style="dim")
+        live_cell = (
+            Text("ACTIVE", style="bold green") if r.is_active else Text("DEAD", style="bold red")
+        )
+        row = [
+            Text(str(r.offer_id)),
+            Text(r.title or "-"),
+            Text(r.previous_status.value, style="dim"),
+            Text(r.current_status.value, style=current_style),
+            live_cell,
+            changed_cell,
+            Text(r.message or "-"),
+        ]
+        if with_url:
+            row.append(Text(r.url or "-"))
+        table.add_row(*row)
+    return table

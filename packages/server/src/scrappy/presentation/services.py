@@ -34,6 +34,7 @@ from scrappy.application.use_cases.finalize_run import FinalizeRun
 from scrappy.application.use_cases.list_offers import ListOffers
 from scrappy.application.use_cases.runs import FinalizeIdleRuns, ResumeRun, StartRun
 from scrappy.application.use_cases.searches import AddSavedSearch, SetRelevanceOverride
+from scrappy.application.use_cases.verify_offers import VerifyOffers
 
 
 class Services(Protocol):
@@ -55,6 +56,8 @@ class Services(Protocol):
     def finalize_idle_runs(self) -> FinalizeIdleRuns: ...
     @property
     def list_offers(self) -> ListOffers: ...
+    @property
+    def verify_offers(self) -> VerifyOffers: ...
     @property
     def set_override(self) -> SetRelevanceOverride: ...
     @property

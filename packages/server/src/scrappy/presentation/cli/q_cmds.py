@@ -26,7 +26,7 @@ from scrappy.application.use_cases.analytics.sql import DEFAULT_SQL_LIMIT
 from scrappy.domain.analytics import DEFAULT_MAX_RATIO, DEFAULT_MIN_GROUP
 from scrappy.domain.category import CategoryName
 from scrappy.domain.component import ComponentKind
-from scrappy.domain.offer import OfferStatus
+from scrappy.domain.offer import OfferId, OfferStatus
 from scrappy.domain.search import SearchName
 from scrappy.presentation.cli.common import cli_context
 from scrappy.presentation.cli.filters import parse_wheres
@@ -221,6 +221,9 @@ def offers(
     sort: Annotated[
         str, typer.Option("--sort", help="seen (default) | price | price-desc")
     ] = "seen",
+    verify: Annotated[
+        bool, typer.Option("--verify", help="Live-verify offers against source and drop dead ones.")
+    ] = False,
     pretty: PrettyOpt = False,
 ) -> None:
     """Filtered list of offers."""
@@ -229,11 +232,39 @@ def offers(
         "limit": limit,
         "fields": _split(fields),
         "sort": sort,
+        "verify": verify,
     }
 
     async def go(app: Services) -> Answer:
         scope = _scope(search, category, relevant, status, where)
-        return await app.q.offers(scope, limit=limit, fields=_split(fields), sort=sort)
+        ans = await app.q.offers(scope, limit=limit, fields=_split(fields), sort=sort)
+        if not verify or not isinstance(ans.data, list):
+            return ans
+        if not ans.data:
+            notes = list(ans.notes)
+            notes.append("live verification skipped: no offers matched filter criteria")
+            return Answer(ans.data, count=0, truncated=ans.truncated, notes=notes)
+        ids = [
+            OfferId.parse(str(row["id"]))
+            for row in ans.data
+            if isinstance(row, dict) and "id" in row
+        ]
+        if not ids:
+            return ans
+        results = await app.verify_offers.verify_many(ids)
+        result_by_id = {str(r.offer_id): r for r in results}
+        active_rows: list[dict[str, object]] = []
+        dead_count = 0
+        for row in ans.data:
+            if isinstance(row, dict) and "id" in row:
+                res = result_by_id.get(str(row["id"]))
+                if res is not None and not res.is_active:
+                    dead_count += 1
+                    continue
+            active_rows.append(row)
+        notes = list(ans.notes)
+        notes.append(f"live verified {len(ids)} offers: {dead_count} dead/removed dropped")
+        return Answer(active_rows, count=len(active_rows), truncated=ans.truncated, notes=notes)
 
     run_q(ctx, "q.offers", params, go, pretty=pretty)
 
@@ -250,6 +281,57 @@ def offer(
         return await app.q.offer(ids)
 
     run_q(ctx, "q.offer", {"ids": ids}, go, pretty=pretty)
+
+
+@q_app.command("verify")
+def verify(
+    ctx: typer.Context,
+    ids: Annotated[
+        list[str] | None,
+        typer.Argument(metavar="[ID...]", help="Specific offer IDs (e.g. olx_pl:123456)."),
+    ] = None,
+    search: SearchOpt = None,
+    category: CategoryOpt = None,
+    relevant: RelevantOpt = True,
+    status: StatusOpt = None,
+    where: WhereOpt = None,
+    limit: LimitOpt = 20,
+    pretty: PrettyOpt = False,
+) -> None:
+    """Live-verify freshness / availability of stored offers against their source."""
+    params = {
+        **_base_params(search, category, relevant, status, where),
+        "ids": ids,
+        "limit": limit,
+    }
+
+    async def go(app: Services) -> Answer:
+        target_ids: list[OfferId] = []
+        if ids:
+            target_ids = [OfferId.parse(i) for i in ids]
+        else:
+            scope = _scope(search, category, relevant, status, where)
+            candidates = await app.q.offers(scope, limit=limit)
+            if isinstance(candidates.data, list):
+                target_ids = [
+                    OfferId.parse(str(row["id"]))
+                    for row in candidates.data
+                    if isinstance(row, dict) and "id" in row
+                ]
+
+        if not target_ids:
+            return Answer([], count=0, notes=["no offers matched for verification"])
+
+        results = await app.verify_offers.verify_many(target_ids)
+        dead_count = sum(1 for r in results if not r.is_active)
+        changed_count = sum(1 for r in results if r.changed)
+        notes = [
+            f"verified {len(results)} offer(s): {len(results) - dead_count} active, "
+            f"{dead_count} dead/removed ({changed_count} updated in database)"
+        ]
+        return Answer([r.to_dict() for r in results], count=len(results), notes=notes)
+
+    run_q(ctx, "q.verify", params, go, pretty=pretty)
 
 
 @q_app.command("facets")
@@ -369,6 +451,12 @@ def rank(
             "value,coverage,breakdown and/or attribute names.",
         ),
     ] = None,
+    verify: Annotated[
+        bool,
+        typer.Option(
+            "--verify", help="Live-verify top ranked offers against source and drop dead ones."
+        ),
+    ] = False,
     pretty: PrettyOpt = False,
 ) -> None:
     """Rank offers by price per performance under a configured strategy (config/scoring.yaml)."""
@@ -378,13 +466,41 @@ def rank(
         "min_coverage": min_coverage,
         "limit": limit,
         "fields": _split(fields),
+        "verify": verify,
     }
 
     async def go(app: Services) -> Answer:
         scope = _scope(search, None, relevant, status, where)
-        return await app.q.rank(
+        ans = await app.q.rank(
             scope, strategy, min_coverage=min_coverage, limit=limit, fields=_split(fields)
         )
+        if not verify or not isinstance(ans.data, list):
+            return ans
+        if not ans.data:
+            notes = list(ans.notes)
+            notes.append("live verification skipped: no offers matched ranking criteria")
+            return Answer(ans.data, count=0, truncated=ans.truncated, notes=notes)
+        ids = [
+            OfferId.parse(str(row["id"]))
+            for row in ans.data
+            if isinstance(row, dict) and "id" in row
+        ]
+        if not ids:
+            return ans
+        results = await app.verify_offers.verify_many(ids)
+        result_by_id = {str(r.offer_id): r for r in results}
+        active_rows: list[dict[str, object]] = []
+        dead_count = 0
+        for row in ans.data:
+            if isinstance(row, dict) and "id" in row:
+                res = result_by_id.get(str(row["id"]))
+                if res is not None and not res.is_active:
+                    dead_count += 1
+                    continue
+            active_rows.append(row)
+        notes = list(ans.notes)
+        notes.append(f"live verified {len(ids)} offers: {dead_count} dead/removed dropped")
+        return Answer(active_rows, count=len(active_rows), truncated=ans.truncated, notes=notes)
 
     run_q(ctx, "q.rank", params, go, pretty=pretty)
 

@@ -371,3 +371,37 @@ def test_components_lists_parts_with_linked_offers(ran: CliEnv, tmp_path: Path) 
     assert [c["id"] for c in linked] == ["gpu:rtx-4060-laptop"]
     assert all(c["kind"] == "cpu" for c in q(ran, "components", "--kind", "cpu")["data"])
     assert q(ran, "components", "--kind", "ram", code=1)["ok"] is False
+
+
+def test_verify_command(ran: CliEnv) -> None:
+    doc = q(ran, "verify", "olx_pl:a1")
+    assert doc["ok"] is True
+    assert doc["command"] == "q.verify"
+    assert doc["count"] == 1
+    assert doc["data"][0]["id"] == "olx_pl:a1"
+
+    doc2 = q(ran, "verify", "--search", "gtx-laptops", "--limit", "2")
+    assert doc2["ok"] is True
+    assert doc2["count"] == 2
+
+
+def test_offers_with_verify(ran: CliEnv) -> None:
+    doc = q(ran, "offers", "--search", "gtx-laptops", "--verify", "--limit", "2")
+    assert doc["ok"] is True
+    assert any("live verified" in note for note in doc["notes"])
+
+
+def test_rank_with_verify(ran: CliEnv) -> None:
+    doc = q(
+        ran,
+        "rank",
+        "--strategy",
+        "gaming",
+        "--min-coverage",
+        "0",
+        "--verify",
+        "--limit",
+        "2",
+    )
+    assert doc["ok"] is True
+    assert any("live verified" in note for note in doc["notes"])

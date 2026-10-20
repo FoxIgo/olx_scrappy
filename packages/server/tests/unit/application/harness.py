@@ -33,6 +33,7 @@ from scrappy.application.use_cases.finalize_run import FinalizeRun
 from scrappy.application.use_cases.list_offers import ListOffers
 from scrappy.application.use_cases.runs import FinalizeIdleRuns, RefreshOffer, ResumeRun, StartRun
 from scrappy.application.use_cases.searches import AddSavedSearch, SetRelevanceOverride
+from scrappy.application.use_cases.verify_offers import VerifyOffers
 from scrappy.domain.category import OTHER_CATEGORY, CategoryCatalog
 from scrappy.domain.extraction import TokenUsage
 from scrappy.domain.shared import SourceId
@@ -152,6 +153,7 @@ class App:
             uow=uow, queries=InMemoryOfferQueries(self.store), categories=self.categories
         )
         self.set_override = SetRelevanceOverride(uow=uow)
+        self.verify_offers = VerifyOffers(uow=uow, sources=self.sources, clock=self.clock)
 
     def add_source(self, name: str) -> ScriptedListingSource:
         source = ScriptedListingSource(name)

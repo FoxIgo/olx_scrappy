@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from scrappy.domain.offer import (
     LivenessStatus,
     Offer,
+    OfferStatus,
     SellerRef,
     evaluate_liveness,
 )
@@ -17,6 +18,7 @@ def make_offer(
     refreshed_at: datetime | None = None,
     has_delivery: bool = False,
     seller: SellerRef | None = None,
+    last_seen_at: datetime = NOW,
 ) -> Offer:
     offer = Offer.from_observation(listing("1"), at(0))
     offer.apply(details("1"), at(1))
@@ -24,6 +26,7 @@ def make_offer(
     offer.refreshed_at = refreshed_at
     offer.has_delivery = has_delivery
     offer.seller = seller
+    offer.last_seen_at = last_seen_at
     return offer
 
 
@@ -103,3 +106,27 @@ class TestLivenessEvaluation:
         evaluation = evaluate_liveness(offer, at=NOW)
         assert evaluation.status is LivenessStatus.ZOMBIE
         assert any("Throwaway" in r for r in evaluation.reasons)
+
+    def test_removed_offer_is_zombie(self) -> None:
+        offer = make_offer()
+        offer.status = OfferStatus.REMOVED
+        evaluation = evaluate_liveness(offer, at=NOW)
+        assert evaluation.status is LivenessStatus.ZOMBIE
+        assert evaluation.score == 0
+
+    def test_not_seen_in_recent_scrapes_is_penalized(self) -> None:
+        seller = SellerRef(
+            external_id="123",
+            name="John",
+            created_at=NOW - timedelta(days=100),
+            last_seen_at=NOW - timedelta(hours=2),
+            is_online=True,
+        )
+        # Offer last seen by scraper 3 days ago (vanished from search)
+        offer = make_offer(
+            seller=seller,
+            last_seen_at=NOW - timedelta(days=3),
+        )
+        evaluation = evaluate_liveness(offer, at=NOW)
+        assert any("Not seen in scrape" in r for r in evaluation.reasons)
+        assert evaluation.score < 65

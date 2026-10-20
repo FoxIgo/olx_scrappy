@@ -19,7 +19,12 @@ from scrappy.domain.offer import OfferId, OfferStatus
 from scrappy.domain.search import SearchName
 from scrappy.presentation.cli.common import execute
 from scrappy.presentation.cli.filters import parse_wheres
-from scrappy.presentation.cli.render import offer_detail, offers_table, stdout
+from scrappy.presentation.cli.render import (
+    offer_detail,
+    offers_table,
+    stdout,
+    verify_results_table,
+)
 from scrappy.presentation.services import Services
 
 offers_app = typer.Typer(help="Browse offers.", no_args_is_help=True)
@@ -95,6 +100,10 @@ def list_cmd(
     sort: Annotated[
         str, typer.Option("--sort", help="seen (default) | price | price-desc")
     ] = "seen",
+    verify: Annotated[
+        bool,
+        typer.Option("--verify", help="Live-verify matching offers and refresh before displaying."),
+    ] = False,
 ) -> None:
     """List a search's offers with optional filters (AND-ed)."""
 
@@ -122,6 +131,10 @@ def list_cmd(
             limit=limit if sort == "seen" else SORT_FETCH_LIMIT,
         )
         items = sort_items(await app.list_offers(query), sort)[:limit]
+        if verify and items:
+            await app.verify_offers.verify_many([item.offer.id for item in items])
+            items = sort_items(await app.list_offers(query), sort)[:limit]
+
         console = stdout()
         if not items:
             console.print("No offers match.")
@@ -172,5 +185,63 @@ def relevance(
         state = {True: "relevant", False: "irrelevant", None: "override cleared"}[value]
         effective = {True: "relevant", False: "irrelevant", None: "unknown"}[link.is_relevant]
         stdout().print(f"Offer {link.offer_id} in {link.search}: {state} (effective: {effective})")
+
+    execute(ctx, go)
+
+
+@offers_app.command("verify")
+def verify_cmd(
+    ctx: typer.Context,
+    offer_ids: Annotated[
+        list[str] | None,
+        typer.Argument(metavar="[OFFER_ID...]", help="Specific offer IDs (e.g. olx_pl:123456)."),
+    ] = None,
+    search: Annotated[
+        str | None, typer.Option("--search", "-s", help="Filter by saved search name.")
+    ] = None,
+    relevant: Annotated[
+        bool, typer.Option("--relevant/--all", help="Only offers relevant to the search.")
+    ] = True,
+    status: Annotated[
+        list[str] | None, typer.Option("--status", help="Offer status filter; default: active.")
+    ] = None,
+    where: Annotated[
+        list[str] | None,
+        typer.Option("--where", "-w", help='Attribute filter, e.g. "price<2000" (repeatable).'),
+    ] = None,
+    limit: Annotated[int, typer.Option("--limit", "-n", min=1)] = 20,
+) -> None:
+    """Verify live freshness / availability of stored offers against their source."""
+
+    async def go(app: Services) -> None:
+        target_ids: list[OfferId] = []
+        if offer_ids:
+            target_ids = [OfferId.parse(oid) for oid in offer_ids]
+        elif search:
+            query = OfferFilter(
+                search=SearchName(search),
+                relevance=RelevanceFilter.RELEVANT if relevant else RelevanceFilter.ALL,
+                statuses=_statuses(status or ["active"]),
+                attributes=parse_wheres(where or ()),
+                limit=limit,
+            )
+            items = await app.list_offers(query)
+            target_ids = [item.offer.id for item in items]
+        else:
+            raise typer.BadParameter("specify one or more OFFER_ID arguments or --search")
+
+        console = stdout()
+        if not target_ids:
+            console.print("No offers match for verification.")
+            return
+
+        results = await app.verify_offers.verify_many(target_ids)
+        console.print(verify_results_table(results))
+        dead_count = sum(1 for r in results if not r.is_active)
+        changed_count = sum(1 for r in results if r.changed)
+        console.print(
+            f"Verified {len(results)} offer(s): {len(results) - dead_count} active, "
+            f"{dead_count} unavailable ({changed_count} updated in database)."
+        )
 
     execute(ctx, go)

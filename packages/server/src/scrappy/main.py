@@ -64,6 +64,7 @@ from scrappy.application.use_cases.runs import (
     StartRun,
 )
 from scrappy.application.use_cases.searches import AddSavedSearch, SetRelevanceOverride
+from scrappy.application.use_cases.verify_offers import VerifyOffers
 from scrappy.domain.shared import DomainError, SourceId
 from scrappy.infrastructure.benchmarks import BlenderOpenDataDownloader, BlenderOpenDataSource
 from scrappy.infrastructure.config.categories import YamlCategoryProvider
@@ -151,6 +152,7 @@ class Container:
     refresh_offer: RefreshOffer
     finalize_idle_runs: FinalizeIdleRuns
     list_offers: ListOffers
+    verify_offers: VerifyOffers
     set_override: SetRelevanceOverride
     q: QueryUseCases
     profiles: ExtractionProfiles
@@ -340,6 +342,7 @@ async def build_app(
         refresh_offer=RefreshOffer(uow=uow, clock=clock, ids=ids),
         finalize_idle_runs=FinalizeIdleRuns(uow=uow, finalize_run=finalize_run),
         list_offers=ListOffers(uow=uow, queries=queries, categories=category_provider),
+        verify_offers=VerifyOffers(uow=uow, sources=listing_sources, clock=clock),
         set_override=SetRelevanceOverride(uow=uow),
         q=q,
         profiles=profiles,

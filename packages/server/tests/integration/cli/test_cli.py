@@ -290,3 +290,14 @@ def test_missing_openrouter_key_leaves_a_backlog_that_heals_once_a_profile_works
 
     assert "stored 4" in env.ok("extract", "--inline")  # a working profile heals it
     assert "olx_pl:a1" in env.ok("offers", "list", "gtx-laptops", "--relevant")
+
+
+def test_offers_verify(ran: CliEnv) -> None:
+    out = ran.ok("offers", "verify", "olx_pl:a1")
+    assert "Live verification results" in out
+    assert "olx_pl:a1" in out
+    assert "Verified 1 offer(s)" in out
+
+    out_search = ran.ok("offers", "verify", "--search", "gtx-laptops", "--limit", "2")
+    assert "Live verification results" in out_search
+    assert "Verified 2 offer(s)" in out_search

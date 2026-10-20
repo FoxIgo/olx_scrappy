@@ -12,6 +12,8 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from scrappy.domain.offer.values import OfferStatus
+
 if TYPE_CHECKING:
     from scrappy.domain.offer.offer import Offer
 
@@ -38,15 +40,35 @@ class LivenessEvaluation:
 
 def evaluate_liveness(offer: Offer, at: datetime | None = None) -> LivenessEvaluation:
     now = at or datetime.now(UTC)
+
+    # 0. Immediate death for removed / sold offers
+    if offer.status is not OfferStatus.ACTIVE:
+        return LivenessEvaluation(
+            status=LivenessStatus.ZOMBIE,
+            score=0,
+            reasons=(f"Offer is {offer.status.value}",),
+        )
+
     reasons: list[str] = []
     score = 50  # baseline starting score
+
+    # 1. Scraper fresh confirmation: Was it seen in our latest scrape?
+    delta_scrape = now - offer.last_seen_at
+    if delta_scrape > timedelta(days=2):
+        score -= 35
+        reasons.append(f"Not seen in scrape for {delta_scrape.days}d (likely removed)")
+    elif delta_scrape > timedelta(hours=24):
+        score -= 15
+        reasons.append("Not seen in latest 24h scrape")
+    else:
+        reasons.append("Confirmed live in latest scrape")
 
     seller = offer.seller
     last_seen = seller.last_seen_at if seller else None
     refreshed_at = offer.refreshed_at
     posted_at = offer.posted_at
 
-    # 1. Seller activity (highest weight)
+    # 2. Seller activity (highest weight)
     if last_seen is not None:
         delta_seen = now - last_seen
         if delta_seen <= timedelta(hours=24):
@@ -70,6 +92,9 @@ def evaluate_liveness(offer: Offer, at: datetime | None = None) -> LivenessEvalu
     elif seller and seller.is_online:
         score += 35
         reasons.append("Seller is currently online")
+    else:
+        score -= 20
+        reasons.append("Seller activity unverified (no login timestamp)")
 
     # 2. Critical Zombie Detection: Auto-renewed while seller was inactive
     if (
